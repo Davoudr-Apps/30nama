@@ -1,0 +1,16 @@
+{
+  "id": "com.nama30.webos",
+  "version": "1.0.1",
+  "vendor": "community",
+  "type": "web",
+  "main": "index.html",
+  "title": "30nama",
+  "icon": "icon.png",
+  "largeIcon": "icon-512.png",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "requiredPermissions": [
+    "network"
+  ],
+  "requiredACG": []
+}
