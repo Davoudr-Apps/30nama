@@ -1,5 +1,20 @@
 Thanks to [mamali6](https://github.com/mamali6) for [30nama-webos](https://github.com/mamali6/30nama-webos) which was used as base code for applying the customizaitons.
 
+## Features
+
+30nama for webOS provides a redesigned, Persian-first TV interface with browsing, watchlists, ratings, themes, a streamlined video player, and dual-subtitle customization.
+
+- Read the full feature list and release notes in [FEATURES.md](FEATURES.md).
+- Preview the interface in the [screenshots gallery](screenshots/).
+
+| Home | Player | Soon |
+|---|---|---|
+| ![30nama home screen](screenshots/01-home.png) | ![30nama player controls](screenshots/14-player-controls.png) | ![Upcoming titles](screenshots/05-soon-tab.png) |
+
+| Themes | Subtitles panel | Subtitle appearance |
+|---|---|---|
+| ![30nama themes](screenshots/10-settings-themes.png) | ![Subtitles and audio panel](screenshots/18-subtitle-panel.png) | ![Subtitle appearance options](screenshots/19-subtitle-panel-style.png) |
+
 # LG OLED B5 — webOS Developer Mode & CLI Setup Guide
 
 This guide explains how to connect an WebOS LG TV to a Mac using the webOS CLI (`ares-*` tools), enable Developer Mode, configure SSH access, and install applications outside the LG Content Store.
