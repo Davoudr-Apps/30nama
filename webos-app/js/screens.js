@@ -102,7 +102,7 @@
   /* ================= Home ================= */
   S.home = function (root, params, restore) {
     var dead = false, st = { mode: 'hero', row: 0 };
-    var heroes = [], defs = [], rowEls = [], tracks = [], cards = [], mem = [], tops = [], cwIds = {}, rowObjs = [], shownHero = null;
+    var heroes = [], defs = [], rowEls = [], tracks = [], cards = [], mem = [], tops = [], cwIds = {}, rowObjs = [], shownHero = null, tab = 'sug', cwView = null, cwCells = [], cwList0 = [], cwPosts0 = [];
     var bb, bbE, dotsEl, playBtn, detBtn, heroUi, rowsEl, noteBtn = null, noteEl = null;
     var curPost = null, curEb = '', curImm = false, shownKey = '', fT = null, bbT = null, flip = false, lastAct = Date.now(), advT = null, rowsTy = null, heroIdx = 0, heroNav = 0, heroT = null, chPrev = null, chNext = null;
     root.classList.add('home');
@@ -111,7 +111,7 @@
     document.addEventListener('keydown', act);
 
     function load() {
-      var cw = N.isLoggedIn() ? N.api.get('continue_watching').catch(function () { return null; }) : Promise.resolve(null);
+      var cw = N.getCW();
       var tmOn = N.tmdb.enabled(), tmH = Promise.resolve([]);
       if (tmOn) { root.classList.add('tm'); N.tmdb.startHome(); tmH = N.tmdb.heroes(6, 3200).catch(function () { return []; }); }
       Promise.all([N.getHome(), cw, tmH]).then(function (res) { if (!dead) build(res[0], extractPosts(res[1]), res[1], res[2]); })
@@ -133,7 +133,7 @@
       if (tmHeroes && tmHeroes.length >= 3) heroes = tmHeroes;
       var cwList = (cwRaw && (cwRaw.posts || cwRaw.items || cwRaw.list || (cwRaw instanceof Array ? cwRaw : []))) || [];
       cwPosts.forEach(function (p) { cwIds[p.id] = true; });
-      if (cwPosts.length) defs.push({ key: 'cw', title: N.t('continueWatching'), kind: 'land', posts: cwPosts, raw: cwList });
+      cwPosts0 = cwPosts; cwList0 = cwList;
       ['new_releases', 'suggested', 'top_10', 'movies', 'series', 'anime'].forEach(function (k) {
         var ps = h[k] && h[k].posts; if (ps && ps.length) defs.push({ key: k, title: N.t(k), kind: k === 'top_10' ? 'top' : 'poster', posts: k === 'top_10' ? ps.slice(0, 10) : ps });
       });
@@ -159,13 +159,14 @@
         root.appendChild(chPrev); root.appendChild(chNext);
       }
       playBtn.onfocus2 = detBtn.onfocus2 = function () { if (st.mode !== 'hero') exitBrowse(); else { curPost = heroes[heroIdx]; } };
+      N.nav.hoverOk = hoverOk;
       // rows
       rowsEl = el('div', 'rows'); root.appendChild(rowsEl);
       defs.forEach(function (d) { var r = makeRow(d); pushRow(r); });
       if (!N.isLoggedIn()) {
         noteEl = el('div', 'guest-note'); noteEl.appendChild(el('div', 'gn-t', N.t('loginRequired')));
         noteBtn = ui.btn(N.t('signIn'), function () { N.go('login', {}, { reset: true }); }, '');
-        noteBtn.onfocus2 = function () { if (st.mode !== 'browse') { st.mode = 'browse'; root.classList.add('browse'); } setRow(defs.length); curPost = null; };
+        noteBtn.onfocus2 = function () { if (st.mode !== 'browse') { st.mode = 'browse'; root.classList.add('browse'); document.body.classList.add('browsing'); N.stage.dim(0.72); } setRow(defs.length); curPost = null; };
         noteEl.appendChild(noteBtn); rowsEl.appendChild(noteEl);
       }
       recalcTops();
@@ -175,6 +176,7 @@
       var start = 0, br = restore && restore.mode === 'browse' && cards[restore.row] && cards[restore.row][restore.idx];
       if (restore && typeof restore.hero === 'number' && heroes[restore.hero]) start = restore.hero;
       instant(root, function () { setRowsRest(); });
+      if (params.tab === 'cw') { if (heroes.length) setHero(0, true, true); else N.splashReady(); setTab('cw', true); var rc0 = cwCells[(restore && restore.cwIdx) || 0]; if (rc0) N.nav.focus(rc0.card, true); advT = setInterval(autoAdvance, 1000); return; }
       if (heroes.length) setHero(start, true, !!br);
       else if (!br) N.splashReady();
       if (br) instant(root, function () { N.nav.focus(br, true); });
@@ -182,11 +184,12 @@
       else if (cards[0]) N.nav.focus(cards[0][0], true);
       advT = setInterval(autoAdvance, 1000);
       tmSetup();
+      N.prefetchArchives();
     }
 
     // one row = {d, row, tr, cs, ws}; d.posts are cards in order. Closures resolve the row index lazily (rows can be inserted above).
     function addCard(r, p, i) {
-      var d = r.d, c = ui.card(p, d.kind, { rank: i + 1 });
+      var d = r.d, c = ui.card(p, d.kind, { rank: i + 1, caption: true });
       if (d.kind === 'land') {
         var n = cwNorm(d.raw[i] || p), lb = n.label || N.title(p);
         c.appendChild(el('div', 'lbl', lb));
@@ -194,7 +197,7 @@
       }
       c.onfocus2 = function () { onCardFocus(defs.indexOf(d), i); };
       c.onclick = function () { goDetails(p, false); };
-      r.tr.appendChild(c); r.cs.push(c); r.ws.push(d.kind === 'land' ? 400 : d.kind === 'top' ? (i + 1 >= 10 ? 420 : 300) : 200);
+      r.tr.appendChild(c); r.cs.push(c); r.ws.push(d.kind === 'land' ? 400 : d.kind === 'top' ? (i + 1 >= 10 ? 480 : 360) : 248);
       if (i < 10) ui.load(c);
     }
     function makeRow(d) {
@@ -246,6 +249,30 @@
       });
     }
 
+    /* ---- Continue watching view (menu item) ---- */
+    function setTab(t, inst) {
+      if (t === tab && !inst) return; tab = t;
+      root.classList.toggle('tab-cw', t === 'cw');
+      if (t === 'cw') { buildCw(); N.stage.dim(0.6); }
+      else { N.stage.dim(st.mode === 'browse' ? 0.6 : 0); }
+    }
+    function buildCw() {
+      if (cwView) return;
+      cwView = el('div', 'arch cwv'); root.appendChild(cwView);
+      cwView.appendChild(el('div', 'ah head', N.t('continueWatching')));
+      var g = posterGrid(cwView, cwPosts0, { empty: N.isLoggedIn() ? N.t('cwEmpty') : N.t('loginRequired'), top: 180 });
+      cwCells = g.cells;
+      cwCells.forEach(function (cell, i) {
+        var n = cwNorm(cwList0[i] || cell.card._post);
+        if (n.label) { var r = cell.card.querySelector('.cap .cr'); if (r) { r.innerHTML = ''; r.appendChild(el('span', 'ry', n.label)); } }
+        if (n.prog > 0) { var pb = el('div', 'prog'), pi = el('i'); pi.style.transform = 'scaleX(' + n.prog.toFixed(3) + ')'; pb.appendChild(pi); cell.card._holder.appendChild(pb); }
+      });
+    }
+    function hoverOk(e) {
+      if (tab === 'cw' || !e.classList.contains('card')) return st.mode === 'hero' || !e.classList.contains('btn');
+      return st.mode === 'browse'; // row posters take hover only while browsing (in hero mode they are just peeking)
+    }
+
     function goDetails(p, play) { if (p) N.go('details', { id: p.id, autoplay: play ? 1 : 0 }); }
 
     /* ---- billboard + stage follow ---- */
@@ -275,7 +302,8 @@
         if (dead) return; fill(p, eb); bb.classList.remove('out', 'in-a', 'in-b'); bb.classList.add(flip ? 'in-a' : 'in-b'); flip = !flip;
       }, 120);
     }
-    function follow() { clearTimeout(fT); if (dead || !curPost) return; if (N.nav.isFast()) return; fT = setTimeout(function () { apply(false); }, 60); }
+    // while browsing rows the backdrop stays put (billboard is hidden anyway): no full-screen image swaps per move
+    function follow() { clearTimeout(fT); if (dead || !curPost || st.mode === 'browse') return; if (N.nav.isFast()) return; fT = setTimeout(function () { apply(false); }, 60); }
     function apply(first) {
       if (dead || !curPost) return;
       var key = curPost.id + '|' + curEb;
@@ -304,7 +332,7 @@
       heroT = setTimeout(function () { if (!dead && st.mode === 'hero') apply(false); }, 200);
     }
     function autoAdvance() {
-      if (dead || st.mode !== 'hero' || heroes.length < 2 || document.body.classList.contains('calm') || N.player.open || N.nav.cur === chPrev || N.nav.cur === chNext || rail_open() || document.querySelector('.modal')) return;
+      if (dead || tab !== 'sug' || st.mode !== 'hero' || heroes.length < 2 || document.body.classList.contains('calm') || N.player.open || N.nav.cur === chPrev || N.nav.cur === chNext || rail_open() || document.querySelector('.modal')) return;
       if (Date.now() - lastAct < 9000 || Date.now() - heroNav < 12000) return;
       lastAct = Date.now(); setHero((heroIdx + 1) % heroes.length, false);
     }
@@ -315,7 +343,7 @@
       st.row = 0;
     }
     function exitBrowse() {
-      st.mode = 'hero'; root.classList.remove('browse'); setRowsRest();
+      st.mode = 'hero'; root.classList.remove('browse'); document.body.classList.remove('browsing'); setRowsRest(); N.stage.dim(0);
       var p = heroes[heroIdx]; curPost = p; curEb = eyebrowFor(p, 'hero'); curImm = true; lastAct = Date.now();
       clearTimeout(fT); apply(false);
     }
@@ -333,7 +361,8 @@
       }
     }
     function setRow(ri) {
-      var ty = 640 - tops[ri];
+      if (N.nav.hovering) { windowRow(ri, mem[ri] || 0); return; } // pointer hover never scrolls
+      var ty = 14 - tops[ri];
       if (rowsTy !== ty) { rowsTy = ty; rowsEl.style.transform = 'translateY(' + ty + 'px)'; }
       if (st.row !== ri || !rowEls[ri].classList.contains('cur')) {
         for (var k = 0; k < rowEls.length; k++) { rowEls[k].classList.toggle('past', k < ri); rowEls[k].classList.toggle('cur', k === ri); }
@@ -341,7 +370,7 @@
       }
     }
     function onCardFocus(ri, i) {
-      if (st.mode !== 'browse') { st.mode = 'browse'; root.classList.add('browse'); }
+      if (st.mode !== 'browse') { st.mode = 'browse'; root.classList.add('browse'); document.body.classList.add('browsing'); N.stage.dim(0.72); }
       mem[ri] = i; setRow(ri); ui.slideTo(tracks[ri], cards[ri][i]._x); windowRow(ri, i);
       var p = cards[ri][i]._post; curPost = p; curEb = eyebrowFor(p, defs[ri].key, i + 1);
       follow();
@@ -352,14 +381,15 @@
         if (dir === 'down') { if (cards.length) return cards[0][mem[0] || 0]; return true; }
         if (dir === 'up') return chPrev || true;
         if (cur === playBtn) { if (s > 0) return detBtn; N.rail.enter(); return true; }
-        if (s < 0) return playBtn; return true;
+        if (s < 0) return playBtn; return chNext || true;
       }
       if (cur === chPrev || cur === chNext) {
         if (dir === 'down') return playBtn;
         if (dir === 'up') return true;
         if (cur === chPrev) { if (s > 0) return chNext; N.rail.enter(); return true; }
-        if (s < 0) return chPrev; return true;
+        if (s < 0) return detBtn; return true;
       }
+      if (tab === 'cw') return false; // continue-watching grid: plain spatial navigation
       if (cur === noteBtn) {
         if (dir === 'up') return cards[cards.length - 1][mem[cards.length - 1] || 0];
         if (s < 0) { N.rail.enter(); } return true;
@@ -392,6 +422,7 @@
         var c = root.querySelector('.clock'); if (c) clearInterval(c._t);
       },
       focusState: function () {
+        if (tab === 'cw') { var ci = 0; for (var q = 0; q < cwCells.length; q++) if (cwCells[q].card === N.nav.cur) ci = q; return { tab: 'cw', cwIdx: ci, hero: heroIdx }; }
         if (st.mode === 'browse' && N.nav.cur) { for (var r = 0; r < cards.length; r++) { var ix = cards[r].indexOf(N.nav.cur); if (ix >= 0) return { mode: 'browse', row: r, idx: ix, hero: heroIdx }; } }
         return { mode: 'hero', hero: heroIdx };
       }
@@ -456,6 +487,15 @@
       btns.appendChild(playB);
       var epB = null;
       if (isSeries && items.length) { epB = ui.btn(N.t('episodes'), function () { openEps(); }, '', 'list'); btns.appendChild(epB); }
+      N.currentPost = post;
+      function listBtn(n) {
+        var b = ui.btn('', function () { N.lists.toggle(n, post); paintB(); }, 'icon ' + n, n === 'watch' ? 'bookmark' : 'heart');
+        function paintB() { var on = N.lists.has(n, post.id); b.classList.toggle('on', on); b.lastChild.textContent = N.t(n === 'watch' ? (on ? 'inWatch' : 'addWatch') : (on ? 'liked1' : 'like')); }
+        paintB(); b._paint = paintB; btns.appendChild(b); return b;
+      }
+      var wB = listBtn('watch'), lB = listBtn('like');
+      N.onListChange = function () { wB._paint(); lB._paint(); };
+      wB.onfocus2 = lB.onfocus2 = function () { setX(false); };
 
       /* episodes sheet */
       var sheet = null, tabs = null, wrap = null, track = null, tmeta = null, seasons = [], map = {}, epMem = {}, tileBy = {}, backToSheet = false;
@@ -649,7 +689,7 @@
         if (d.recs.length) {
           var recRow = null, got = {}, n = 0, queued = [];
           var addRec = function (p) {
-            var c = ui.card(p, 'poster'); c.onclick = function () { N.go('details', { id: p.id }); }; xCard(recRow, c, 200); ui.load(c);
+            var c = ui.card(p, 'poster', { caption: true }); c.onclick = function () { N.go('details', { id: p.id }); }; xCard(recRow, c, 248); ui.load(c);
           };
           d.recs.slice(0, 20).forEach(function (it) {
             N.tmdb.resolve(it, function () { return !dead && n < 12; }).then(function (p) {
@@ -657,7 +697,7 @@
               got[p.id] = 1; n++;
               if (!recRow) {
                 queued.push(p); if (queued.length < 3) return;
-                recRow = xRowAdd('rec', N.t('moreLikeThis'), 396); queued.forEach(addRec); return;
+                recRow = xRowAdd('rec', N.t('moreLikeThis'), 560); queued.forEach(addRec); return;
               }
               addRec(p);
             });
@@ -674,7 +714,7 @@
         if (items.length) play(startIdx, true); else N.toast(N.isLoggedIn() ? N.t('noStream') : N.t('playLogin'), 3500);
       }
     }
-    var current = { destroy: function () { dead = true; clearTimeout(swT); if (sheetScope) { N.nav.popScope(); sheetScope = null; } if (current.closeRv) current.closeRv(); } };
+    var current = { destroy: function () { dead = true; N.onListChange = null; clearTimeout(swT); if (sheetScope) { N.nav.popScope(); sheetScope = null; } if (current.closeRv) current.closeRv(); } };
     load();
     return current;
   };
@@ -769,8 +809,64 @@
     return { destroy: function () { dead = true; clearTimeout(timer); clearTimeout(swT); document.removeEventListener('keydown', onKeyDown); } };
   };
 
+  /* ================= Poster grid (5 columns, two rows per screen) ================= */
+  function posterGrid(box, posts, o) {
+    o = o || {}; var grid = el('div', 'ggrid'), cells = [];
+    if (o.top) grid.style.top = o.top + 'px';
+    box.appendChild(grid);
+    box.reveal = function (e) { var ty = ui.vscroll(box, e._cell || e, 600); box.classList.toggle('scrolled', ty < 0); };
+    if (!posts.length && o.empty) { var m = el('div', 'nores', o.empty); m.style.position = 'relative'; m.style.top = '0'; grid.appendChild(m); }
+    posts.forEach(function (p, i) {
+      var cell = ui.cell(p), c = cell.card; cells.push(cell); grid.appendChild(cell);
+      c.onclick = function () { N.go('details', { id: p.id }); };
+      c.onfocus2 = function () { for (var k = Math.max(0, i - 5); k < Math.min(cells.length, i + 15); k++) ui.load(cells[k].card); };
+      if (i < 15) ui.load(c);
+    });
+    return { grid: grid, cells: cells };
+  }
+
+  /* ================= Watchlist / Liked ================= */
+  S.list = function (root, params, restore) {
+    var name = params.name === 'like' ? 'like' : 'watch', g = null;
+    root.classList.add('archive', 'gridpage'); N.stage.dim(0.72);
+    var box = el('div', 'arch'); root.appendChild(box);
+    function paint() {
+      box.innerHTML = ''; box._ty = null; box.style.transform = '';
+      var posts = N.lists.all(name), head = el('div', 'head ah', N.t(name === 'like' ? 'liked' : 'watchlist'));
+      head.appendChild(el('small', 'tab', posts.length ? String(posts.length) : '')); box.appendChild(head);
+      box.appendChild(el('div', 'head lhint', N.t(name === 'like' ? 'likeHint' : 'watchHint')));
+      g = posterGrid(box, posts, { empty: N.t('listEmpty'), top: 214 });
+    }
+    paint();
+    var want = restore && restore.idx || 0;
+    if (g.cells[want] || g.cells[0]) N.nav.focus((g.cells[want] || g.cells[0]).card, true);
+    // removing the focused title from this list: rebuild and keep the position
+    N.onListChange = function (n) {
+      if (n !== name) return; var idx = 0; for (var i = 0; i < g.cells.length; i++) if (g.cells[i].card === N.nav.cur) idx = i;
+      paint(); var c = g.cells[Math.min(idx, g.cells.length - 1)]; if (c) N.nav.focus(c.card, true); else N.nav.clear();
+    };
+    return {
+      destroy: function () { N.onListChange = null; },
+      focusState: function () { for (var i = 0; i < g.cells.length; i++) if (g.cells[i].card === N.nav.cur) return { idx: i }; return null; }
+    };
+  };
+
   /* ================= Archive ================= */
   var menuCache = null;
+  N.getMenu = function () {
+    if (menuCache) return Promise.resolve(menuCache);
+    var st = N.store.get('menuSaved', null);
+    var net = N.api.get('menu').then(function (m) { menuCache = m; N.store.set('menuSaved', { t: Date.now(), m: m }); return m; });
+    if (st && st.m && Date.now() - st.t < 3 * 24 * 3600 * 1000) { net.catch(function () {}); return Promise.resolve(st.m); }
+    return net;
+  };
+  // the IMDb Top 250 list, if 30nama's menu offers one (category or genre whose slug/name mentions 250)
+  function top250Item(m) {
+    var all = (m && m.categories || []).concat(m && m.genres || []), hit = null;
+    all.forEach(function (c) { var t = (c.slug || '') + ' ' + (c.name || ''); if (!hit && /250/.test(t) && /imdb|top|برتر/i.test(t)) hit = c; });
+    if (!hit) all.forEach(function (c) { if (!hit && /(^|[^0-9])250([^0-9]|$)/.test((c.slug || '') + ' ' + (c.name || ''))) hit = c; });
+    return hit;
+  }
   S.archive = function (root, params, restore) {
     if (params && params.slug) return archiveList(root, params, restore);
     var dead = false;
@@ -795,42 +891,190 @@
       });
       N.nav.focus(cats.firstChild, true);
     }
-    if (menuCache) show(menuCache);
-    else N.api.get('menu').then(function (m) { menuCache = m; show(m); }).catch(function (e) { if (!dead) errorView(root, e, function () { N.go('archive', {}, { replace: true }); }); });
+    N.getMenu().then(function (m) { show(m); }).catch(function (e) { if (!dead) errorView(root, e, function () { N.go('archive', {}, { replace: true }); }); });
     return { destroy: function () { dead = true; } };
   };
 
-  var SORTS = [['date', 'newest'], ['favorite', 'popular'], ['update', 'updated']];
+  var SORTS = [['new', 'newest'], ['soon', 'soonTab'], ['favorite', 'popular'], ['update', 'updated']];
+  /* "Newest" = newest releases. 30nama's orderby=date is the date a title was ADDED to the site, so old films added
+     recently came first. The API's release-year key is not documented: try likely keys once, keep the first whose results
+     really come back newest-year-first, otherwise fall back to date-added order sorted by year on the TV. */
+  var NEW_KEYS = ['year', 'release_year', 'release', 'release_date', 'publish_year'];
+  function yearOf(p) { return Number((p.info || {}).year) || 0; }
+  function sortedByYear(posts) {
+    var ys = (posts || []).map(yearOf).filter(Boolean); if (ys.length < 6) return false;
+    var bad = 0; for (var i = 1; i < ys.length; i++) if (ys[i] > ys[i - 1]) bad++;
+    return bad <= Math.floor(ys.length * 0.1) && ys[0] >= new Date().getFullYear() - 3;
+  }
+  function byYearDesc(r) { if (r && r.posts) r.posts = r.posts.slice().sort(function (a, b) { return yearOf(b) - yearOf(a); }); return r; }
+  function isSoon(p) { return !!(p && p.options && p.options.coming_soon); }
+  // bg = background prefetch: low-priority request queue (anything the user opens goes first)
+  function archivePage(slug, sort, page, bg) {
+    // Newest without the not-yet-streamable titles; they get their own "Soon" tab
+    if (sort === 'new') return archivePage1(slug, 'new', page, bg).then(function (r) { return r && r.posts ? Object.assign({}, r, { posts: r.posts.filter(function (p) { return !isSoon(p); }) }) : r; });
+    if (sort === 'soon') return soonList(slug, bg);
+    if (sort === 'top250') return top250List(bg);
+    return archivePage1(slug, sort, page, bg);
+  }
+  /* First page of every tab is also kept on the TV between launches: shown instantly, refreshed quietly behind it. */
+  var KEEP_MS = 3 * 24 * 3600 * 1000, FRESH_MS = 10 * 60 * 1000;
+  // background work (prefetch / quiet refresh) only while the app is on screen and nothing is playing
+  N.bgOk = function () { return !document.hidden && !(N.player && N.player.open); };
+  function slimPost(p) { return { id: p.id, title: p.title, plot: p.plot, image: p.image, info: p.info, score: p.score, genre: p.genre, options: p.options }; }
+  function saved(k) { var e = N.store.get('ac.' + k, null); return e && e.r && Date.now() - e.t < KEEP_MS ? e : null; }
+  function save(k, r) { if (r && r.posts) N.store.set('ac.' + k, { t: Date.now(), r: { posts: r.posts.map(slimPost), total: r.total, pages: r.pages } }); }
+  function cached(k, persist, fetch) {
+    var hit = N.archiveCache.get(k); if (hit) return hit;
+    var fresh = function () { var pr = fetch(); if (persist) pr.then(function (r) { save(k, r); }, function () {}); return pr; };
+    var old = persist && saved(k);
+    if (old) {
+      var shown = N.archiveCache.put(k, Promise.resolve(old.r));
+      if (Date.now() - old.t > FRESH_MS && N.bgOk()) { var nf = fresh(); nf.then(function () { N.archiveCache.put(k, nf); }, function () {}); }
+      return shown;
+    }
+    return N.archiveCache.put(k, fresh());
+  }
+  function imdbOf(p) { var sc = p.score || {}; return Number(sc.imdb && sc.imdb.score) || 0; }
+  function top250List(bg) {
+    return N.getMenu().then(function (m) {
+      var it = top250Item(m); if (!it) return { posts: [], total: 0, pages: 1 };
+      return cached('top250|' + it.slug, true, function () {
+        var out = [], seen = {}, n = 1, total = 13;
+        function step() {
+          if (n > total) { out.sort(function (a, b) { return imdbOf(b) - imdbOf(a); }); return { posts: out.slice(0, 250), total: Math.min(250, out.length), pages: 1 }; }
+          return archivePage0(it.slug, 'favorite', n++, bg).then(function (r) {
+            if (r && r.pages) total = Math.min(13, r.pages);
+            (r && r.posts || []).forEach(function (p) { if (!seen[p.id]) { seen[p.id] = 1; out.push(p); } });
+            return step();
+          }, function (e) { if (!out.length) throw e; n = total + 1; return step(); });
+        }
+        return step();
+      });
+    });
+  }
+  // "Soon": upcoming titles collected from the first pages of Newest (where they sit, sorted by year). One page.
+  var SOON_PAGES = 6;
+  function soonList(slug, bg) {
+    return cached(slug + '|soon', true, function () {
+      var out = [], seen = {}, n = 1, total = SOON_PAGES;
+      function step() {
+        if (n > total) return { posts: out.sort(function (a, b) { return yearOf(b) - yearOf(a); }), total: out.length, pages: 1 };
+        return archivePage1(slug, 'new', n++, bg, true).then(function (r) {
+          if (r && r.pages) total = Math.min(SOON_PAGES, r.pages);
+          (r && r.posts || []).forEach(function (p) { if (isSoon(p) && !seen[p.id]) { seen[p.id] = 1; out.push(p); } });
+          return step();
+        }, function (e) { if (!out.length && n <= 2) throw e; n = total + 1; return step(); });
+      }
+      return step();
+    });
+  }
+  // noSaved: Soon must read real pages, not a remembered copy of page 1
+  function archivePage1(slug, sort, page, bg, noSaved) {
+    var k = slug + '|' + sort + '|' + page;
+    if (noSaved) { var h = N.archiveCache.get(k); return h || N.archiveCache.put(k, archivePage0(slug, sort, page, bg)); }
+    return cached(k, page === 1 || (sort === 'new' && page <= 4), function () { return archivePage0(slug, sort, page, bg); });
+  }
+  // after Home is up: every tab of Movies / Series / Anime, one request at a time on the low-priority queue
+  N.prefetchArchives = function () {
+    if (N._pref || !N.store.get('newestKey', null)) return; N._pref = true;
+    var jobs = [];
+    ['new', 'favorite', 'update', 'soon'].forEach(function (so) { ['movies', 'series', 'anime'].forEach(function (sl) { jobs.push([sl, so]); }); });
+    var i = 0;
+    (function one() {
+      if (i >= jobs.length) return;
+      if (!N.bgOk()) { setTimeout(one, 5000); return; } // paused while watching / while the app is in the background
+      var j = jobs[i++];
+      var known = N.archiveCache.get(j[0] + '|' + (j[1] === 'soon' ? 'soon' : j[1] + '|1'));
+      if (known) return one();
+      archivePage(j[0], j[1], 1, true).then(function (r) {
+        (r && r.posts || []).slice(0, 10).forEach(function (p) { var u = ui.posterUrl(p); if (u) { var im = new Image(); im.src = u; } });
+        setTimeout(one, 1200);
+      }, function () { setTimeout(one, 5000); });
+    })();
+  };
+  // finding the release-year key: once for the whole app (shared promise), never in parallel.
+  // Only a real answer from the server counts; a network / rate-limit error decides nothing.
+  var keyHunt = null;
+  function newestKey(slug) {
+    var k = N.store.get('newestKey', null); if (k) return Promise.resolve(k);
+    if (keyHunt) return keyHunt;
+    var i = 0;
+    function next() {
+      if (i >= NEW_KEYS.length) { N.store.set('newestKey', 'client'); return 'client'; }
+      var key = NEW_KEYS[i++];
+      return N.api.get('archive', { slugs: slug, streamonly: 1, page: 1, orderby: key, order: 'desc' }).then(function (r) {
+        if (r && sortedByYear(r.posts)) { N.store.set('newestKey', key); return key; }
+        return next();
+      }, function (e) {
+        if (e && e.msg) return next();          // the server answered "no": try the next key
+        throw e;                                // transient: stop, try again another time
+      });
+    }
+    keyHunt = Promise.resolve().then(next).then(function (k) { keyHunt = null; return k; }, function (e) { keyHunt = null; throw e; });
+    return keyHunt;
+  }
+  function archivePage0(slug, sort, page, bg) {
+    function q(orderby) { return N.api.get('archive', { slugs: slug, streamonly: 1, page: page, orderby: orderby, order: 'desc' }, bg ? { bg: true } : null); }
+    if (sort !== 'new') return q(sort);
+    return newestKey(slug).then(function (k) { return k === 'client' ? q('date').then(byYearDesc) : q(k); },
+      function () { return q('date').then(byYearDesc); }); // could not decide right now: date-added order, sorted by year
+  }
+
   function archiveList(root, params, restore) {
-    var dead = false, page = 1, pages = 1, loading = false, total = 0, cells = [], skels = [], sort = (restore && restore.sort) || 'date', wantIdx = restore && restore.idx || 0, restoring = !!(restore && restore.idx > 0), gen = 0, COLS = 7;
+    var dead = false, page = 1, pages = 1, loading = false, total = 0, cells = [], skels = [], sort = (restore && restore.sort !== 'date' && restore.sort) || 'new', fills = 0, wantIdx = restore && restore.idx || 0, restoring = !!(restore && restore.idx > 0), gen = 0, COLS = 5;
     root.classList.add('archive', 'gridpage'); N.stage.dim(0.72);
     var box = el('div', 'arch'); root.appendChild(box);
     var head = el('div', 'head ah'); head.textContent = params.name || params.slug; var cnt = el('small', 'tab', ''); head.appendChild(cnt); box.appendChild(head);
-    var sorts = el('div', 'sorts head'); box.appendChild(sorts);
+    var sorts = el('div', 'sorts side'), lastCell = null; root.appendChild(sorts);
     var grid = el('div', 'ggrid'); box.appendChild(grid);
-    box.reveal = function (e) { var ty = ui.vscroll(box, e._cell || e, 260); box.classList.toggle('scrolled', ty < 0); };
+    box.reveal = function (e) { var ty = ui.vscroll(box, e._cell || e, 600); box.classList.toggle('scrolled', ty < 0); };
     SORTS.forEach(function (s) {
-      var p = ui.pill(N.t(s[1]), function () { if (sort === s[0]) return; sort = s[0]; paint(); reset(); }, sort === s[0]); p._k = s[0]; sorts.appendChild(p);
-      p.onnav = function (dir) { if (dir === 'down') return cells[0] ? cells[0].card : true; if (dir === 'up') return true; return false; };
+      addSortPill(s);
     });
+    function addSortPill(s, at) {
+      var p = ui.pill(N.t(s[1]), function () { if (sort === s[0]) return; sort = s[0]; paint(); reset(); }, sort === s[0]); p._k = s[0];
+      if (at) sorts.insertBefore(p, at); else sorts.appendChild(p);
+      // Up/Down move through the tabs; towards the grid returns to the last poster
+      p.onnav = function (dir) {
+        if (dir === 'up') return p.previousSibling || true;
+        if (dir === 'down') return p.nextSibling || true;
+        if (ui.step(dir) < 0) return (lastCell && document.body.contains(lastCell) && lastCell) || (cells[0] ? cells[0].card : true);
+        return true;
+      };
+      return p;
+    }
+    // IMDb Top 250 (Movies only, if 30nama has the list)
+    if (params.slug === 'movies') N.getMenu().then(function (m) { if (!top250Item(m) || dead) return; addSortPill(['top250', 'top250']); paint(); }, function () {});
     function paint() { for (var i = 0; i < sorts.children.length; i++) sorts.children[i].classList.toggle('cur', sorts.children[i]._k === sort); }
     function addSkels(n) { for (var i = 0; i < n; i++) { var c = el('div', 'gcell'); c.appendChild(ui.skelCard('grid')); skels.push(c); grid.appendChild(c); } }
     function clearSkels() { skels.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); skels = []; }
     function reset() {
-      gen++; page = 1; pages = 1; cells = []; grid.innerHTML = ''; skels = []; box.style.transition = 'none'; box._ty = null; box.style.transform = ''; void box.offsetWidth; box.style.transition = ''; box.classList.remove('scrolled');
-      wantIdx = 0; restoring = false; load();
+      gen++; loading = false; page = 1; pages = 1; cells = []; grid.innerHTML = ''; skels = []; box.style.transition = 'none'; box._ty = null; box.style.transform = ''; void box.offsetWidth; box.style.transition = ''; box.classList.remove('scrolled');
+      wantIdx = 0; restoring = false; fills = 0; load();
     }
     function load() {
-      if (loading) return; loading = true; var my = gen; addSkels(page === 1 ? 14 : 7);
-      N.api.get('archive', { slugs: params.slug, streamonly: 1, page: page, orderby: sort, order: 'desc' }).then(function (r) {
+      if (loading) return; loading = true; var my = gen; addSkels(page === 1 ? 10 : 5);
+      archivePage(params.slug, sort, page).then(function (r) {
         if (dead || my !== gen) return;
         loading = false; clearSkels();
         var first = cells.length === 0;
         total = r.total || total; pages = r.pages || 1; if (total) cnt.textContent = Number(total).toLocaleString('en-US') + ' ' + N.t('results');
+        if (first && sort === 'soon' && !(r.posts || []).length) { var em = el('div', 'nores', N.t('soonEmpty')); em.style.position = 'relative'; em.style.top = '0'; grid.appendChild(em); }
+        box.classList.toggle('soonpage', sort === 'soon');
+        box.classList.toggle('toppage', sort === 'top250');
         (r.posts || []).forEach(function (p) {
           var cell = ui.cell(p), idx = cells.length, c = cell.card;
           c.onclick = function () { N.go('details', { id: p.id }); };
+          if (sort === 'top250') c._holder.appendChild(el('div', 'rank-b tab', '#' + (idx + 1)));
+          // from the last column, the arrow towards the tabs lands on the selected tab
+          c.onnav = function (dir) {
+            if ((dir === 'left' || dir === 'right') && ui.step(dir) > 0 && (idx % COLS === COLS - 1 || idx === cells.length - 1)) {
+              for (var q = 0; q < sorts.children.length; q++) if (sorts.children[q]._k === sort) return sorts.children[q];
+            }
+            return false;
+          };
           c.onfocus2 = function () {
+            lastCell = c;
             var row = Math.floor(idx / COLS), rows = Math.ceil(cells.length / COLS);
             for (var k = Math.max(0, (row - 1) * COLS); k < Math.min(cells.length, (row + 3) * COLS); k++) ui.load(cells[k].card);
             if (row >= rows - 2 && page < pages) { page++; load(); }
@@ -838,12 +1082,16 @@
           cells.push(cell); grid.appendChild(cell);
         });
         for (var k = 0; k < Math.min(cells.length, 3 * COLS); k++) ui.load(cells[k].card);
-        if (first && !restoring) N.nav.focus(cells[0] ? cells[0].card : sorts.firstChild, true);
+        // Newest hides upcoming titles, so a page can come back short or empty (the newest years are often all "Soon"):
+        // keep fetching until there are at least three rows, instead of waiting for a scroll that can't happen
+        if (!restoring && sort === 'new' && cells.length < 3 * COLS && page < pages && fills < 15) { fills++; page++; load(); return; }
+        if (first && !restoring) { if (cells[0]) N.nav.focus(cells[0].card, true); else N.nav.focus(sorts.firstChild, true); }
+        if (!first && !restoring && !N.nav.cur && cells[0]) N.nav.focus(cells[0].card, true);
         if (restoring) {
           if (wantIdx < cells.length) { restoring = false; instant(root, function () { N.nav.focus(cells[wantIdx].card, true); }); }
           else if (page < pages) { page++; load(); } else { restoring = false; N.nav.focus(cells[0] ? cells[0].card : sorts.firstChild, true); }
         }
-      }).catch(function (e) { loading = false; if (!dead && my === gen) { clearSkels(); if (!cells.length) errorView(root, e, function () { N.go('archive', params, { replace: true }); }); } });
+      }).catch(function (e) { if (my === gen) loading = false; if (!dead && my === gen) { clearSkels(); if (!cells.length) errorView(root, e, function () { N.go('archive', params, { replace: true }); }); } });
     }
     load();
     return {
@@ -854,25 +1102,15 @@
 
   /* ================= Settings ================= */
   S.settings = function (root, params, restore) {
-    var dead = false, sec = (restore && restore.sec) || (params && params.section) || 'account', swT = null, secs = ['account', 'language', 'playback', 'display', 'about'];
+    var dead = false, sec = (restore && restore.sec) || (params && params.section) || 'account', swT = null, secs = ['account', 'language', 'playback', 'subtitles', 'display', 'about'];
     root.classList.add('set'); N.stage.dim(0.72);
     root.appendChild(el('div', 'h-xl t', N.t('settings')));
-    var list = el('div', 'slist'), pane = el('div', 'spane'); root.appendChild(list); root.appendChild(pane);
+    var list = el('div', 'slist'), pane = el('div', 'spane scroll'); pane.setAttribute('data-mv', '160'); root.appendChild(list); root.appendChild(pane);
     var rows = {};
     function fmtExpire(v) {
       if (v === undefined || v === null || v === '') return N.t('unknown');
       if (typeof v === 'number' || /^\d{9,13}$/.test(String(v))) { var n = Number(v); if (n < 1e11) n *= 1000; return new Date(n).toISOString().slice(0, 10); }
       return String(v);
-    }
-    // option row. opts: values [{v,label}], get(), set(v)
-    function opt(label, values, get, set) {
-      var r = el('div', 'orow f fl'), v = el('div', 'v'), val = el('span', ''), hint = el('span', 'hint', '‹ ›');
-      r.appendChild(el('span', '', label)); v.appendChild(hint); v.appendChild(val); r.appendChild(v);
-      function paintV() { var cur = get(); for (var i = 0; i < values.length; i++) if (values[i].v === cur) { val.textContent = values[i].label; return i; } val.textContent = values[0].label; return 0; }
-      function cycle(d) { var i = paintV(); i = (i + d + values.length) % values.length; set(values[i].v); paintV(); }
-      paintV(); r.onenter = r.onclick = function () { cycle(1); };
-      r.onnav = function (dir) { if (dir === 'left' || dir === 'right') { cycle(ui.step(dir)); return true; } return false; };
-      return r;
     }
     function info(label, value) { var r = el('div', 'orow nof'); r.appendChild(el('span', '', label)); r.appendChild(el('div', 'v', value)); return r; }
     function action(label, fn, danger) { var r = el('div', 'orow f fl' + (danger ? ' danger' : '')); r.appendChild(el('span', '', label)); r.onclick = r.onenter = fn; return r; }
@@ -890,29 +1128,60 @@
         } else p.appendChild(action(N.t('login'), function () { N.go('login', {}, { reset: true }); }));
       },
       language: function (p) {
-        p.appendChild(opt(N.t('language'), [{ v: 'en', label: 'English' }, { v: 'fa', label: 'فارسی' }], function () { return N.lang; }, function (v) {
+        p.appendChild(N.subs.seg(N.t('language'), [{ v: 'en', label: 'English' }, { v: 'fa', label: 'فارسی' }], function () { return N.lang; }, function (v) {
+          if (v === N.lang) return;
           N.setLang(v); N.dropHome(); N.rail.build();
           var idx = 0; for (var i = 0; i < pane.children.length; i++) if (pane.children[i] === N.nav.cur) idx = i;
           N.rerender();
         }));
       },
       playback: function (p) {
-        p.appendChild(opt(N.t('defSubs'), [{ v: 'off', label: N.t('off') }, { v: 'fa', label: N.t('persian') }, { v: 'en', label: N.t('english') }],
-          function () { return N.store.get('sub', 'off'); }, function (v) { N.store.set('sub', v); }));
-        var sample = el('div', 'subsample', N.t('sample')); sample.style.fontSize = N.store.get('subSize', 46) + 'px';
-        p.appendChild(opt(N.t('subSize'), [{ v: 38, label: N.t('small') }, { v: 46, label: N.t('medium') }, { v: 54, label: N.t('large') }],
-          function () { return N.store.get('subSize', 46); }, function (v) { N.store.set('subSize', v); sample.style.fontSize = v + 'px'; }));
-        p.appendChild(sample);
-        p.appendChild(opt(N.t('autoplay'), onOff, function () { return N.store.get('autoplay', true); }, function (v) { N.store.set('autoplay', v); }));
+        var SB = N.subs, av = ['fa', 'en'], r1, r2, g1 = function () { return N.store.get('sub', 'off'); }, g2 = function () { return N.store.get('sub2', 'off'); };
+        r1 = SB.seg(N.t('defSubs'), SB.langOpts(av, g2), g1, function (v) { N.store.set('sub', v); r2.repaint(); });
+        r2 = SB.seg(N.t('defSubs2'), SB.langOpts(av, g1), g2, function (v) { N.store.set('sub2', v); r1.repaint(); });
+        p.appendChild(r1); p.appendChild(r2);
+        p.appendChild(SB.seg(N.t('autoplay'), onOff, function () { return N.store.get('autoplay', true); }, function (v) { N.store.set('autoplay', v); }));
+      },
+      subtitles: function (p) {
+        var SB = N.subs, sample = el('div', 'subsample'), host = el('div', '');
+        var cv = N.stage.currentSrc && N.stage.currentSrc(); if (cv) sample.style.backgroundImage = 'url("' + cv + '")';
+        sample.appendChild(host); SB.host(host); p.appendChild(sample);
+        function paintSample() {
+          var a = N.store.get('sub', 'off'), b = N.store.get('sub2', 'off'), sm = { fa: 'زیرنویس به این شکل نمایش داده می‌شود', en: 'This is how subtitles will look' };
+          if (a === 'off' && b === 'off') a = N.lang;
+          SB.render(host, a !== 'off' ? sm[a] : '', b !== 'off' ? sm[b] : '');
+        }
+        paintSample();
+        var rows = SB.styleRows(p);
+        // "on top" only matters with two subtitles, but it is a style choice: keep it here too
+        var top = SB.seg(N.t('onTop'), [{ v: 1, label: N.t('sub1') }, { v: 2, label: N.t('sub2') }], function () { return SB.style().top; }, function (v) { SB.set('top', v); paintSample(); });
+        p.insertBefore(top, rows[0]);
+        p.appendChild(SB.action(N.t('resetStyle'), function () { SB.reset(); SB.repaintIn(p); paintSample(); N.toast(N.t('resetDone')); }, 'reset'));
+        p.appendChild(el('div', 'note', N.t('subStyleNote')));
       },
       display: function (p) {
-        p.appendChild(opt(N.t('reduce'), onOff.slice().reverse().map(function (x) { return x; }), function () { return N.store.get('calm', false); }, function (v) {
+        // themes as a vertical list: Up/Down to move, OK (or click) to pick
+        p.appendChild(el('div', 'sp-s', N.t('theme')));
+        var thRows = [];
+        function paintTh() { var cur = N.store.get('theme', 'crimson'); thRows.forEach(function (r) { r.classList.toggle('sel', r._v === cur); }); }
+        N.THEMES.forEach(function (t) {
+          var r = el('div', 'crow thr f'), dot = el('i', 'dot'); r._v = t.v;
+          dot.style.background = t.c || 'conic-gradient(#F0454A,#F5A524,#22C67A,#3B8BFF,#9B6BFF,#F0454A)';
+          r.appendChild(dot); r.appendChild(el('div', 'cl', N.t('th_' + t.v)));
+          if (t.v === 'media') r.appendChild(el('div', 'th-n', N.t('th_media_n')));
+          r.appendChild(ui.icon('check', 'ck'));
+          r.onenter = r.onclick = function () { N.setTheme(t.v); paintTh(); };
+          p.appendChild(r); thRows.push(r);
+        });
+        paintTh();
+        p.appendChild(el('div', 'sp-s', N.t('display')));
+        p.appendChild(N.subs.seg(N.t('reduce'), onOff, function () { return N.store.get('calm', false); }, function (v) {
           N.store.set('calm', v); document.body.classList.toggle('calm', v);
         }));
       },
       about: function (p) {
         p.appendChild(info('30nama TV', ''));
-        p.appendChild(info(N.t('version'), N.config.version));
+        p.appendChild(info(N.t('version'), N.config.appVersion || N.config.version));
         p.appendChild(info(N.t('unofficial'), ''));
         p.appendChild(info(N.t('apiHost'), (N.api.host || '').replace(/^https?:\/\//, '').replace(/\/api.*$/, '')));
         p.appendChild(info(N.t('tmdb'), N.tmdb.mock() ? N.t('tmdbMock') : (N.tmdb.token() ? N.t('tmdbOn') : N.t('tmdbOff'))));
@@ -926,11 +1195,11 @@
       if (s === sec && pane.firstChild) return; sec = s;
       for (var k in rows) rows[k].classList.toggle('cur', k === s);
       clearTimeout(swT);
-      function paintP() { pane.innerHTML = ''; builders[s](pane); pane.classList.remove('sw'); }
+      function paintP() { pane.innerHTML = ''; pane.scrollTop = 0; builders[s](pane); pane.classList.remove('sw'); }
       if (now) paintP(); else { pane.classList.add('sw'); swT = setTimeout(function () { if (!dead) paintP(); }, 120); }
     }
     secs.forEach(function (s) {
-      var r = el('button', 'srow f fl' + (s === sec ? ' cur' : ''), N.t(s === 'account' ? 'account' : s)); rows[s] = r;
+      var r = el('button', 'srow f fl' + (s === sec ? ' cur' : ''), N.t(s === 'subtitles' ? 'subStyle' : s)); rows[s] = r;
       r.onfocus2 = function () { showPane(s); };
       r.onnav = function (dir) { if (dir === 'right' || dir === 'left') { if (ui.step(dir) > 0) { if (swT) { clearTimeout(swT); swT = null; pane.innerHTML = ''; builders[sec](pane); pane.classList.remove('sw'); } var f = pane.querySelector('.f'); return f || true; } return false; } return false; };
       list.appendChild(r);

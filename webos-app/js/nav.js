@@ -134,9 +134,46 @@
       if (nav.cur) { if (nav.cur.onenter) nav.cur.onenter(); else nav.cur.click(); }
     }
   });
-  // mouse support for desktop testing (only on real pointer movement, so content sliding under a still cursor never steals focus)
+  /* ---------- pointer (LG Magic Remote / mouse) ----------
+     Hovering only moves focus: it never scrolls anything (content sliding under a still pointer is disorienting).
+     Scrolling happens when the pointer rests at a screen edge: focus then steps that way, exactly like the arrow keys. */
+  var ptr = { x: 0, y: 0, on: false, dwell: 0, last: 0 };
+  nav.hovering = false;
+  nav.hoverOk = null; // optional per-screen filter: function(el) -> bool
   document.addEventListener('mousemove', function (e) {
     if (!e.movementX && !e.movementY) return;
-    var t = e.target; while (t && t !== document.body) { if (t.classList && t.classList.contains('f')) { if (t !== nav.cur) nav.focus(t); return; } t = t.parentNode; }
+    ptr.x = e.clientX; ptr.y = e.clientY; ptr.on = true;
+    var t = e.target;
+    while (t && t !== document.body) {
+      if (t.classList && t.classList.contains('f')) {
+        if (t === nav.cur || !root().contains(t) || (nav.hoverOk && !nav.hoverOk(t))) return;
+        nav.hovering = true;
+        try { nav.focus(t, true); } finally { nav.hovering = false; }
+        return;
+      }
+      t = t.parentNode;
+    }
   });
+  // webOS hides the cursor after a while or when an arrow key is pressed
+  document.addEventListener('cursorStateChange', function (e) { ptr.on = !!(e.detail && e.detail.visibility); });
+  document.addEventListener('keydown', function (e) { if (e.keyCode >= 37 && e.keyCode <= 40) ptr.on = false; }, true);
+  document.addEventListener('mouseleave', function () { ptr.on = false; });
+  function edgeDir() {
+    var w = window.innerWidth, h = window.innerHeight, m = Math.max(14, Math.round(h * 0.035));
+    if (ptr.y <= m) return 'up';
+    if (ptr.y >= h - m) return 'down';
+    if (ptr.x <= m) return 'left';
+    if (ptr.x >= w - m) return 'right';
+    return null;
+  }
+  setInterval(function () {
+    var d = ptr.on && !nav.locked && !(N.player && N.player.open) ? edgeDir() : null;
+    if (!d) { ptr.dwell = 0; return; }
+    ptr.dwell += 100;
+    var now = Date.now();
+    if (ptr.dwell < 400 || now - ptr.last < 650) return;
+    ptr.last = now;
+    if (!nav.cur || !document.body.contains(nav.cur)) { nav.focusFirst(); return; }
+    nav.move(d);
+  }, 100);
 })();

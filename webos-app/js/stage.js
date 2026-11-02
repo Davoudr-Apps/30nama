@@ -19,6 +19,7 @@
     return null;
   };
   S.currentId = function () { return curId; };
+  S.currentSrc = function () { return curSrc; };
 
   function swap(info, done) {
     init();

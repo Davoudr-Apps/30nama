@@ -5,18 +5,27 @@
   var RAIL = [
     ['search', 'search', function () { N.go('search', {}, { reset: true }); }],
     ['home', 'home', function () { N.go('home', {}, { reset: true }); }],
+    ['cw', 'history', function () { N.go('home', { tab: 'cw' }, { reset: true }); }],
     ['movies', 'movies', function () { N.go('archive', { slug: 'movies', name: N.t('movies') }, { reset: true }); }],
     ['series', 'series', function () { N.go('archive', { slug: 'series', name: N.t('series') }, { reset: true }); }],
     ['anime', 'anime', function () { N.go('archive', { slug: 'anime', name: N.t('anime') }, { reset: true }); }],
+    ['watchlist', 'bookmark', function () { N.go('list', { name: 'watch' }, { reset: true }); }],
+    ['liked', 'heart', function () { N.go('list', { name: 'like' }, { reset: true }); }],
     ['archive', 'archive', function () { N.go('archive', {}, { reset: true }); }],
     ['settings', 'settings', function () { N.go('settings', {}, { reset: true }); }]
   ];
   var ACCT = ['account', 'user', function () { N.go('settings', { section: 'account' }, { reset: true }); }];
 
+  /* ---------------- themes ---------------- */
+  N.THEMES = [
+    { v: 'media', c: '' }, { v: 'crimson', c: '#F0454A' }, { v: 'ocean', c: '#3B8BFF' }, { v: 'emerald', c: '#22C67A' }, { v: 'amber', c: '#F5A524' }, { v: 'violet', c: '#9B6BFF' }
+  ];
+  N.setTheme = function (t) { N.store.set('theme', t); document.documentElement.setAttribute('data-theme', t); };
+
   /* ---------------- home cache ---------------- */
   var hc = { t: 0, p: null };
   N.getHome = function () {
-    if (hc.p && Date.now() - hc.t < 90000) return hc.p;
+    if (hc.p && Date.now() - hc.t < 300000) return hc.p;
     hc.t = Date.now();
     hc.p = N.api.get('home_stream').then(function (r) { N.store.set('homeCache', r); return r; }).catch(function (e) {
       hc.p = null;
@@ -26,7 +35,22 @@
     });
     return hc.p;
   };
-  N.dropHome = function () { hc.p = null; };
+  N.dropHome = function () { hc.p = null; cwc.p = null; };
+  // continue-watching list: kept 2 minutes, dropped whenever playback ends (it changes then)
+  var cwc = { t: 0, p: null };
+  N.getCW = function () {
+    if (!N.isLoggedIn()) return Promise.resolve(null);
+    if (cwc.p && Date.now() - cwc.t < 120000) return cwc.p;
+    cwc.t = Date.now(); cwc.p = N.api.get('continue_watching').catch(function () { cwc.p = null; return null; });
+    return cwc.p;
+  };
+  N.dropCW = function () { cwc.p = null; };
+  // archive pages: kept 5 minutes per (slug, sort, page) so revisiting Movies/Series/Anime is instant
+  var ac = {};
+  N.archiveCache = {
+    get: function (k) { var e = ac[k]; return e && Date.now() - e.t < 300000 ? e.p : null; },
+    put: function (k, p) { ac[k] = { t: Date.now(), p: p }; p.catch(function () { if (ac[k] && ac[k].p === p) delete ac[k]; }); return p; }
+  };
 
   /* ---------------- splash ---------------- */
   var splash = { t0: Date.now(), done: false, dotsT: null, failT: null };
@@ -43,7 +67,7 @@
 
   /* ---------------- rail ---------------- */
   var rail = N.rail = { items: [], open: false, mem: null, pill: null, root: null };
-  var Y0 = 288, PITCH = 72, ACCT_Y = 966;
+  var Y0 = 206, PITCH = 68, ACCT_Y = 966;
   function yOf(i) { return i < RAIL.length ? Y0 + i * PITCH : ACCT_Y; }
   rail.build = function () {
     var r = rail.root = $('rail'); r.innerHTML = ''; rail.items = [];
@@ -54,10 +78,12 @@
       var b = el('button', 'ri' + (m[0] === 'account' ? ' acct' : '')); b._key = m[0]; b._y = yOf(i); b.style.top = b._y + 'px';
       if (m[0] === 'account') { var av = el('div', 'av'); av.appendChild(N.ui.icon('user')); b.appendChild(av); }
       else b.appendChild(N.ui.icon(m[1]));
-      var lb = el('span', 'lb', N.t(m[0])); lb.style.transitionDelay = (i * 20) + 'ms'; b.appendChild(lb);
+      var lb = el('span', 'lb', N.t(m[0] === 'home' ? 'suggestions' : m[0] === 'cw' ? 'continueWatching' : m[0])); lb.style.transitionDelay = (i * 20) + 'ms'; b.appendChild(lb);
       b.onenter = function () { rail.go(m); };
       b.onclick = function () { rail.go(m); };
       b.onfocus2 = function () { rail.pill.style.transform = 'translateY(' + b._y + 'px)'; };
+      // pointer: hovering an icon expands the menu on that item (clicks on the page never reach the collapsed menu)
+      b.onmouseenter = function () { if (!rail.open) rail.enter(); N.nav.focus(b, true); };
       b.onnav = function (dir) {
         if (dir === 'up') return rail.items[i - 1] || true;
         if (dir === 'down') return rail.items[i + 1] || true;
@@ -74,6 +100,8 @@
     if (!e) return '';
     if (e.name === 'archive' && e.params && (e.params.slug === 'movies' || e.params.slug === 'series' || e.params.slug === 'anime')) return e.params.slug;
     if (e.name === 'settings' && e.params && e.params.section === 'account') return 'account';
+    if (e.name === 'home' && e.params && e.params.tab === 'cw') return 'cw';
+    if (e.name === 'list') return e.params && e.params.name === 'like' ? 'liked' : 'watchlist';
     return e.name;
   };
   rail.mark = function () {
@@ -109,6 +137,9 @@
   };
   // keep the expanded panel in sync with focus: leaving the rail by any route (pointer, modal return, screen change, player) collapses it
   N.nav.onFocusChange = function (e) {
+    N.ui.cardFocus(e);
+    // "Match the selected title": the page background follows the focused poster
+    if (e && e._post && document.body.classList.contains('pg-other') && N.store.get('theme', 'crimson') === 'media') N.stage.show(e._post);
     if (!rail.root) return;
     var inRail = rail.isRail(e);
     if (inRail && !rail.open && rail.visible()) { rail.open = true; rail.root.classList.add('open'); }
@@ -126,14 +157,16 @@
     if (modal) return;
     var m = el('div', 'modal'), box = el('div', 'box');
     box.appendChild(el('div', 'mt', o.title)); box.appendChild(el('div', 'mb', o.body || ''));
-    var row = el('div', 'acts'), cancel = N.ui.btn(o.cancel || N.t('cancel'), function () { N.closeModal(); }, '');
+    var row = el('div', 'acts'), cancel = N.ui.btn(o.cancel || N.t('cancel'), function () { N.closeModal(true); }, '');
     var ok = N.ui.btn(o.ok, function () { N.closeModal(); o.onOk(); }, o.danger ? 'danger' : 'primary');
     row.appendChild(cancel); row.appendChild(ok); box.appendChild(row); m.appendChild(box); document.body.appendChild(m);
-    modal = { el: m, prev: N.nav.cur };
-    N.nav.pushScope(m); void m.offsetWidth; m.classList.add('show'); N.nav.focus(cancel, true);
+    modal = { el: m, prev: N.nav.cur, onCancel: o.onCancel };
+    if (o.okFirst) { row.insertBefore(ok, cancel); }
+    N.nav.pushScope(m); void m.offsetWidth; m.classList.add('show'); N.nav.focus(o.okFirst ? ok : cancel, true);
   };
-  N.closeModal = function () {
+  N.closeModal = function (cancelled) {
     if (!modal) return; var m = modal; modal = null;
+    if (cancelled && m.onCancel) setTimeout(m.onCancel, 0);
     N.nav.popScope(); m.el.classList.remove('show');
     setTimeout(function () { if (m.el.parentNode) m.el.parentNode.removeChild(m.el); }, 260);
     if (m.prev && m.prev.offsetWidth > 0) N.nav.focus(m.prev, true); else N.nav.clear();
@@ -148,8 +181,11 @@
   };
 
   /* ---------------- router ---------------- */
-  function setChrome(name) {
+  function setChrome(name, params) {
     rail.root.classList.toggle('gone', name === 'login');
+    // every page except Home (suggestions) and a title's own page wears the theme background
+    document.body.classList.toggle('pg-other', !(name === 'home' && !(params && params.tab === 'cw')) && name !== 'details' && name !== 'login');
+    N.nav.hoverOk = null; N.currentPost = null; document.body.classList.remove('browsing');
     N.stage.dim(0); N.stage.details(false);
   }
   function build(entry) {
@@ -158,7 +194,7 @@
     if (old && old.parentNode) old.parentNode.removeChild(old);
     N.nav.clear(); N.nav.locked = false;
     var r = el('div', 'screen enter ' + entry.name); content.appendChild(r); rootEl = r;
-    setChrome(entry.name);
+    setChrome(entry.name, entry.params);
     rail.mark();
     current = N.screens[entry.name](r, entry.params || {}, entry.focus) || {};
   }
@@ -166,8 +202,7 @@
     clearTimeout(swapT);
     if (rail.open) { rail.open = false; rail.root.classList.remove('open'); rail.mem = null; }
     if (rootEl && current) {
-      rootEl.classList.add('leave'); N.nav.clear(); N.nav.locked = true;
-      swapT = setTimeout(function () { build(entry); }, 150);
+      N.nav.clear(); build(entry);
     } else build(entry);
   }
   // opts: reset (clear history), replace (swap top entry)
@@ -183,17 +218,18 @@
     render(entry);
   };
   N.onBack = function () {
-    if (N.player.open) { N.player.close(); return; }
-    if (modal) { N.closeModal(); return; }
+    if (modal) { N.closeModal(true); return; }
+    if (N.player.open) { N.player.askExit(); return; }
     if (rail.open) { rail.close(true); return; } // Back on the menu: collapse it and return to the content
     if (current && current.back && current.back()) return;
     if (stack.length > 1) { stack.pop(); render(stack[stack.length - 1]); return; }
     var top = stack[stack.length - 1];
-    if (top && top.name !== 'home' && top.name !== 'login' && rail.visible()) { N.go('home', {}, { reset: true }); return; } // other top-level screens go Home
+    if (top && (top.name !== 'home' || (top.params && top.params.tab)) && top.name !== 'login' && rail.visible()) { N.go('home', {}, { reset: true }); return; } // other top-level screens go Home
     N.confirmExit(); // Home (or login): exit confirm
   };
   N.onLogout = function () { N.dropHome(); N.go('login', {}, { reset: true }); };
   N.onPlayerClosed = function () {
+    N.dropCW();
     N.stage.restore();
     if (current && current.onPlayerClosed) current.onPlayerClosed();
     else if (N.nav.cur === null && rootEl) N.nav.focusFirst(rootEl);
@@ -249,6 +285,15 @@
     fit();
     content = $('content');
     if (N.store.get('calm', false)) document.body.classList.add('calm');
+    N.setTheme(N.store.get('theme', 'crimson'));
+    // colour keys: yellow = watchlist, blue = like (focused poster, or the title on the details page)
+    N.nav.pushHandler(function (e) {
+      if (N.player.open || (e.keyCode !== N.keys.YELLOW && e.keyCode !== N.keys.BLUE)) return false;
+      var p = (N.nav.cur && N.nav.cur._post) || N.currentPost; if (!p) return false;
+      N.lists.toggle(e.keyCode === N.keys.YELLOW ? 'watch' : 'like', p);
+      if (N.nav.cur) N.ui.cardFocus(N.nav.cur);
+      return true;
+    });
     fit();
     N.nav.registerKeys();
     splash.dotsT = setTimeout(function () { var d = document.querySelector('#splash .dots3'); if (d) d.classList.add('on'); }, 1800);

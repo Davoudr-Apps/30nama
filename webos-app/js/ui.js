@@ -64,18 +64,95 @@
     } else if (kind !== 'land') {
       ui.badge(holder, po);
     }
+    c._holder = holder;
+    if (o.caption && kind !== 'tile' && kind !== 'land') c.appendChild(ui.caption(post));
     return c;
+  };
+  // title + rating line under a poster
+  ui.rating = function (post) {
+    var sc = post.score || {}, v = (sc.imdb && sc.imdb.score) || (sc['30nama'] && sc['30nama'].score) || '';
+    return v ? String(v) : '';
+  };
+  // caption: title, then the two ratings as tinted chips (IMDb yellow, 30nama red), then year and type
+  ui.caption = function (post) {
+    var cap = el('div', 'cap'), r = el('div', 'cr tab'), pi = post.info || {}, sc = post.score || {};
+    cap.appendChild(el('div', 'ct', N.title(post)));
+    var im = sc.imdb && sc.imdb.score, s3 = sc['30nama'] && sc['30nama'].score;
+    if (im) r.appendChild(el('span', 'rt imdb', String(im)));
+    if (s3) r.appendChild(el('span', 'rt n30', String(s3)));
+    var bits = [];
+    if (pi.year) bits.push(String(pi.year));
+    bits.push(ui.typeLabel(post));
+    r.appendChild(el('span', 'ry', bits.join('  \u00b7  ')));
+    cap.appendChild(r); cap._r = r; return cap;
+  };
+
+  /* ---------- focused-poster overlay: genre, next episode, summary, like / watchlist ---------- */
+  var ovT = null, nextT = null;
+  function ovBtn(kind, post, c) {
+    var b = el('div', 'ob ' + kind); b.appendChild(ui.icon(kind === 'watch' ? 'bookmark' : 'heart'));
+    function paint() { b.classList.toggle('on', N.lists.has(kind, post.id)); }
+    b.onclick = function (e) { e.stopPropagation(); N.lists.toggle(kind, post); paint(); };
+    b._paint = paint; paint(); return b;
+  }
+  ui.cardFocus = function (c) {
+    clearTimeout(ovT); clearTimeout(nextT);
+    if (!c || !c._post || !c.classList.contains('card') || /k-(tile|face|rev|land)/.test(c.className)) return;
+    var post = c._post;
+    // first visit: build the info box only once the selection rests on this poster (no text layout while scrolling)
+    if (!c._ov) { ovT = setTimeout(function () { if (c.classList.contains('focus')) { buildOv(c, post); } }, 240); return; }
+    buildOv(c, post);
+  };
+  function buildOv(c, post) {
+    if (!c._ov) {
+      var h = c._holder || c, ov = el('div', 'ov'), pi = post.info || {}, g = (post.genre || []).slice(0, 2).map(function (x) { return x.name; }).join(' \u00b7 ');
+      var top = el('div', 'obs'); top.appendChild(ovBtn('watch', post, c)); top.appendChild(ovBtn('like', post, c)); ov.appendChild(top);
+      var info = el('div', 'oi');
+      if (g) info.appendChild(el('div', 'og', g));
+      var nx = el('div', 'onx'); nx.style.display = 'none'; info.appendChild(nx); ov._nx = nx;
+      var pl = N.plot(post); if (pl) info.appendChild(el('div', 'op', pl));
+      if (pi.seasons && (post.options || {}).is_series) info.appendChild(el('div', 'os', pi.seasons + ' ' + N.t('seasons')));
+      ov.appendChild(info); h.appendChild(ov); c._ov = ov; ov._btns = top;
+    } else { var bs = c._ov._btns.children; for (var i = 0; i < bs.length; i++) bs[i]._paint(); }
+    // next episode (TMDB) after a short dwell, only for series
+    if (!c._nextDone && (post.options || {}).is_series && N.tmdb && N.tmdb.enabled()) {
+      nextT = setTimeout(function () {
+        c._nextDone = true;
+        N.tmdb.details(post).then(function (d) {
+          if (!d || !d.next || !c._ov) return; var nx = c._ov._nx;
+          nx.textContent = N.t('nextEp') + ' \u00b7 S' + d.next.s + 'E' + d.next.e + (d.next.d ? ' \u00b7 ' + d.next.d : ''); nx.style.display = '';
+        }).catch(function () {});
+      }, 700);
+    }
+  }
+
+
+  /* ---------- watchlist / liked (kept on the TV) ---------- */
+  var LK = { watch: 'watchlist', like: 'liked' };
+  function slim(p) { return { id: p.id, title: p.title, plot: p.plot, image: p.image, info: p.info, score: p.score, genre: p.genre, options: p.options }; }
+  N.lists = {
+    all: function (n) { return N.store.get(LK[n], []) || []; },
+    has: function (n, id) { var a = N.lists.all(n); for (var i = 0; i < a.length; i++) if (a[i].id === id) return true; return false; },
+    toggle: function (n, post) {
+      var a = N.lists.all(n), i, on = true;
+      for (i = 0; i < a.length; i++) if (a[i].id === post.id) { a.splice(i, 1); on = false; break; }
+      if (on) a.unshift(slim(post));
+      N.store.set(LK[n], a);
+      N.toast(N.t(on ? (n === 'watch' ? 'addedWatch' : 'addedLike') : (n === 'watch' ? 'removedWatch' : 'removedLike')) + ' \u00b7 ' + N.title(post), 2200);
+      if (N.onListChange) N.onListChange(n, post, on);
+      return on;
+    }
   };
   ui.badge = function (c, po) {
     var b = null;
-    if (po.coming_soon) { b = el('div', 'bdg soon', N.t('soon')); }
+    if (po.coming_soon) { b = el('div', 'bdg soon'); b.appendChild(ui.icon('history')); b.appendChild(el('span', '', N.t('soonTag'))); }
     else if (po.free_stream) { b = el('div', 'bdg free', N.t('free')); }
     if (b) c.appendChild(b);
   };
   // grid cell: poster + title under it. Returns the cell; cell.card is the focusable.
   ui.cell = function (post) {
-    var cell = el('div', 'gcell'), c = ui.card(post, 'grid');
-    cell.appendChild(c); cell.appendChild(el('div', 'gt', N.title(post))); cell.card = c; c._cell = cell; return cell;
+    var cell = el('div', 'gcell'), c = ui.card(post, 'grid', { caption: true });
+    cell.appendChild(c); cell.card = c; c._cell = cell; return cell;
   };
   // episode tiles (typographic; the API has no stills)
   ui.epName = function (it) {
@@ -122,8 +199,9 @@
   ui.meta = function (post, nGenres) {
     var m = el('div', 'meta'), pi = post.info || {}, sc = post.score || {}, bits = 0;
     function dot() { if (m.lastChild) m.appendChild(el('i', 'dot-s')); }
-    if (sc.imdb && sc.imdb.score) { m.appendChild(el('span', 'imdb tab', 'IMDb ' + sc.imdb.score)); }
-    if (sc['30nama'] && sc['30nama'].score) { var s3 = el('span', 'sc tab', String(sc['30nama'].score)); m.appendChild(s3); }
+    // same rating chips as on the tiles: IMDb on yellow, 30nama on red
+    if (sc.imdb && sc.imdb.score) { var ri = el('span', 'rt imdb tab'); ri.appendChild(el('small', '', 'IMDb')); ri.appendChild(document.createTextNode(String(sc.imdb.score))); m.appendChild(ri); }
+    if (sc['30nama'] && sc['30nama'].score) { var r3 = el('span', 'rt n30 tab'); r3.appendChild(el('small', '', '30nama')); r3.appendChild(document.createTextNode(String(sc['30nama'].score))); m.appendChild(r3); }
     if (pi.year) { dot(); m.appendChild(el('span', 'tab', pi.year + (pi.year_end && pi.year_end !== pi.year && (post.options || {}).is_series ? '–' + pi.year_end : ''))); }
     var d = ui.duration(pi.time && pi.time.default); if (d) { dot(); m.appendChild(el('span', 'tab', d)); }
     if (pi.age) { dot(); m.appendChild(el('span', 'age', pi.age)); }
@@ -142,6 +220,7 @@
     track._total = x - gap; track._s = null;
   };
   ui.slideTo = function (track, x) {
+    if (N.nav.hovering) return; // pointer hover never scrolls
     var s = Math.max(0, x - START), max = Math.max(0, (track._total || 0) - 1824);
     if (s > max) s = max;
     if (track._s === s) return; track._s = s;
@@ -151,6 +230,7 @@
   ui.topIn = topIn;
   // keep `target` row at (at most) `anchor` px from the top of the screen
   ui.vscroll = function (box, target, anchor) {
+    if (N.nav.hovering) return box._ty || 0;
     var ty = -Math.max(0, topIn(target, box) - anchor);
     if (box._ty === ty) return ty; box._ty = ty;
     box.style.transform = 'translateY(' + ty + 'px)'; return ty;
