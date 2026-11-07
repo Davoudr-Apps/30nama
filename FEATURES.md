@@ -1,4 +1,4 @@
-## What's new (v1.1 – v1.9)
+## What's new (v1.1 – v1.9.1)
 
 > Screenshots below use demo data and placeholder artwork.
 
@@ -16,6 +16,7 @@
 ### Browsing
 - **Suggestions** and **Continue** (with progress bars) in the side menu
 - Every poster shows its title, **IMDb rating** (yellow), **30nama rating** (red), year and type
+  - In the Movies / Series / Anime, Watchlist, Liked and Search grids, the title appears only on the selected poster (remote arrows or Magic Remote pointer), for a cleaner grid; ratings, year and type always stay (v1.9.1)
 - The selected poster shows genre, summary, season count and, with a TMDB key, the next episode date
 - **Watchlist** and **Liked** lists: buttons on posters and title pages, or the yellow / blue remote buttons
 - Movies, Series and Anime: 5-column grid with a fixed tab column on the side
@@ -107,6 +108,7 @@
 **مرور**
 - «پیشنهادها» و «ادامه» در منو
 - امتیاز IMDb (زرد) و ۳۰نما (قرمز) روی هر پوستر
+- در جدول‌های فیلم، سریال، انیمه، لیست‌ها و جستجو، نام عنوان فقط روی پوستر انتخاب‌شده نمایش داده می‌شود
 - خلاصه، ژانر و دکمه‌های لیست تماشا و پسندیدن روی پوستر انتخاب‌شده
 - صفحه‌های «لیست تماشا» و «پسندیده‌ها» (دکمه زرد و آبی ریموت)
 - زبانه‌های کناری ثابت: جدیدترین (بر اساس سال انتشار)، به‌زودی، محبوب، به‌روزشده، ۲۵۰ برتر IMDb
