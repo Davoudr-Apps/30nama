@@ -1,4 +1,4 @@
-## What's new (v1.1 – v1.9.3)
+## What's new (v1.1 – v1.9.4)
 
 > Screenshots below use demo data and placeholder artwork.
 
@@ -8,6 +8,7 @@
 - 5 colour themes (Crimson, Ocean, Emerald, Amber, Violet) plus **Match the selected title**, where the page background follows the selected poster
 - Smooth, lag-free movement across posters and pages, tuned for TV hardware
 - Full Persian (right-to-left) layout
+- New app icon on the TV home screen: the 30nama cube on flat crimson, filling the whole tile (v1.9.4)
 
 | Home | Selected poster |
 |---|---|
@@ -107,6 +108,7 @@
 - انتخاب با جلوه شیشه‌ای به جای سفید
 - ۵ پوسته رنگی و گزینه «هماهنگ با عنوان انتخاب‌شده»
 - حرکت روان و بدون کندی
+- آیکون تازه برنامه در صفحه اصلی تلویزیون: مکعب ۳۰نما روی زمینه قرمز یکدست
 
 **پایداری**
 - اگر هنگام باز شدن برنامه اتصال به ۳۰نما برقرار نشود، به جای صفحه خالی پیام خطا با دکمه «تلاش دوباره» نمایش داده می‌شود و پس از برقراری اتصال، برنامه به‌طور عادی اجرا می‌شود

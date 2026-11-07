@@ -1,12 +1,13 @@
 {
   "id": "com.nama30.webos",
-  "version": "1.9.3",
+  "version": "1.9.4",
   "vendor": "community",
   "type": "web",
   "main": "index.html",
   "title": "30nama",
   "icon": "icon.png",
-  "largeIcon": "icon-512.png",
+  "largeIcon": "icon-130.png",
+  "iconColor": "#F0454A",
   "resolution": "1920x1080",
   "disableBackHistoryAPI": true,
   "requiredPermissions": [
