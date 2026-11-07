@@ -1,4 +1,4 @@
-## What's new (v1.1 – v1.9.1)
+## What's new (v1.1 – v1.9.2)
 
 > Screenshots below use demo data and placeholder artwork.
 
@@ -90,6 +90,9 @@
 |---|---|
 | ![Ocean](screenshots/12-ocean-theme.png) | ![Match title](screenshots/13-match-title-theme.png) |
 
+### Reliability
+- If 30nama can't be reached when the app starts, a clear error screen with a **Retry** button appears instead of a blank screen; Retry starts the app normally once the connection is back (v1.9.2)
+
 ### Persian
 | Home | Player |
 |---|---|
@@ -104,6 +107,9 @@
 - انتخاب با جلوه شیشه‌ای به جای سفید
 - ۵ پوسته رنگی و گزینه «هماهنگ با عنوان انتخاب‌شده»
 - حرکت روان و بدون کندی
+
+**پایداری**
+- اگر هنگام باز شدن برنامه اتصال به ۳۰نما برقرار نشود، به جای صفحه خالی پیام خطا با دکمه «تلاش دوباره» نمایش داده می‌شود و پس از برقراری اتصال، برنامه به‌طور عادی اجرا می‌شود
 
 **مرور**
 - «پیشنهادها» و «ادامه» در منو

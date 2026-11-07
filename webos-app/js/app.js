@@ -239,14 +239,16 @@
   };
 
   function bootError(e) {
-    N.splashReady(); rail.root.classList.add('gone'); rootEl && (rootEl.innerHTML = '');
+    N.splashReady(); var rr = rail.root || $('rail'); if (rr) rr.classList.add('gone'); rootEl && (rootEl.innerHTML = ''); // rail.build() may never have run (servers unreachable at launch)
     var r = el('div', 'screen enter'); content.innerHTML = ''; content.appendChild(r); rootEl = r; current = null;
     var w = el('div', 'center-msg'); w.appendChild(N.ui.icon('warn'));
     try { console.warn('boot error', e && e.message); } catch (x) {}
     w.appendChild(el('div', 'm', N.t('error') + '. ' + N.t('tryAgain')));
-    var b = N.ui.btn(N.t('retry'), boot, 'primary'); w.appendChild(b); r.appendChild(w); N.nav.focus(b, true);
+    var b = N.ui.btn(N.t('retry'), function () { if (booting) return; b.lastChild.textContent = N.t('loading'); boot(); }, 'primary'); w.appendChild(b); r.appendChild(w); N.nav.focus(b, true);
   }
+  var booting = false; // one boot at a time (Retry can be pressed again while a slow attempt is still running)
   function boot() {
+    if (booting) return; booting = true;
     N.api.init().then(function () {
       rail.build();
       var p = Promise.resolve();
@@ -260,9 +262,10 @@
       }
       return p;
     }).then(function () {
+      booting = false;
       if (N.isLoggedIn() || N.store.get('guest', false) === true) N.go('home', {}, { reset: true });
       else N.go('login', {}, { reset: true });
-    }).catch(bootError);
+    }).catch(function (e) { booting = false; bootError(e); });
   }
 
   // Scale the 1920x1080 stage on smaller windows (desktop testing). No-op on a 1080p TV.
