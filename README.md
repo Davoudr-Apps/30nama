@@ -4,6 +4,7 @@ Thanks to [mamali6](https://github.com/mamali6) for [30nama-webos](https://githu
 
 30nama for webOS provides a redesigned, Persian-first TV interface with browsing, watchlists, ratings, themes, a streamlined video player, and dual-subtitle customization.
 
+- Six launch screens to choose from in Settings, a new app icon, and posters that show their title only when selected.
 - Read the full feature list and release notes in [FEATURES.md](FEATURES.md).
 - Preview the interface in the [screenshots gallery](screenshots/).
 
@@ -14,6 +15,10 @@ Thanks to [mamali6](https://github.com/mamali6) for [30nama-webos](https://githu
 | Themes | Subtitles panel | Subtitle appearance |
 |---|---|---|
 | ![30nama themes](screenshots/10-settings-themes.png) | ![Subtitles and audio panel](screenshots/18-subtitle-panel.png) | ![Subtitle appearance options](screenshots/19-subtitle-panel-style.png) |
+
+| Launch screen: Curtain & Letterbox | Launch screen: Persian Wordmark | Launch screen: Aurora Glass |
+|---|---|---|
+| ![Curtain & Letterbox launch screen](screenshots/24-launch-curtain.png) | ![Persian Wordmark launch screen](screenshots/26-launch-persian-wordmark.png) | ![Aurora Glass launch screen](screenshots/28-launch-aurora-glass.png) |
 
 # LG OLED B5 — webOS Developer Mode & CLI Setup Guide
 

@@ -15,6 +15,22 @@
 |---|---|
 | ![Home](screenshots/01-home.png) | ![Selected poster](screenshots/02-rows-selected-tile.png) |
 
+| Launch screen: Curtain & Letterbox (default) | Poster Mosaic |
+|---|---|
+| ![Curtain & Letterbox launch screen](screenshots/24-launch-curtain.png) | ![Poster Mosaic launch screen](screenshots/25-launch-poster-mosaic.png) |
+
+| Persian Wordmark | Minimal Light |
+|---|---|
+| ![Persian Wordmark launch screen](screenshots/26-launch-persian-wordmark.png) | ![Minimal Light launch screen](screenshots/27-launch-minimal-light.png) |
+
+| Aurora Glass | Countdown Leader |
+|---|---|
+| ![Aurora Glass launch screen](screenshots/28-launch-aurora-glass.png) | ![Countdown Leader launch screen](screenshots/29-launch-countdown-leader.png) |
+
+| Choosing the launch screen | App icon |
+|---|---|
+| ![Settings, Launch screen](screenshots/30-settings-launch-screen.png) | ![30nama app icon](screenshots/31-app-icon.png) |
+
 ### Browsing
 - **Suggestions** and **Continue** (with progress bars) in the side menu
 - Every poster shows its title, **IMDb rating** (yellow), **30nama rating** (red), year and type
@@ -28,6 +44,10 @@
   - **IMDb Top 250** (Movies, when 30nama provides the list), ranked with #1, #2…
 - Magic Remote pointer: pointing selects without moving the page; resting at a screen edge scrolls
 - Fast tabs: pages are kept on the TV between launches and loaded ahead in the background, but never while you watch or while the app is in the background
+
+| Grid: title on the selected poster | Home rows: title on the selected poster |
+|---|---|
+| ![Grid title on focus](screenshots/32-grid-title-on-focus.png) | ![Home rows title on focus](screenshots/33-home-title-on-focus.png) |
 
 | Continue | Movies with side tabs |
 |---|---|
