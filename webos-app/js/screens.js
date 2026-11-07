@@ -1174,6 +1174,18 @@
           p.appendChild(r); thRows.push(r);
         });
         paintTh();
+        // launch screen: OK saves the look and plays a short preview; it is used from the next launch
+        p.appendChild(el('div', 'sp-s', N.t('splashLook')));
+        var spRows = [], SW = { mosaic: 'linear-gradient(135deg,#2a1418,#1a1d26)', persian: '#F0454A', light: '#F5F1EE', curtain: 'repeating-linear-gradient(90deg,#c8323a 0 6px,#F0454A 6px 10px)', aurora: 'linear-gradient(135deg,#F0454A,#a82878)', leader: 'conic-gradient(rgba(240,69,74,.2),#F0454A)' };
+        function paintSp() { var cur = N.splashLook(); spRows.forEach(function (r) { r.classList.toggle('sel', r._v === cur); }); }
+        N.SPLASHES.forEach(function (v) {
+          var r = el('div', 'crow thr f'), dot = el('i', 'dot'); r._v = v; dot.style.background = SW[v];
+          r.appendChild(dot); r.appendChild(el('div', 'cl', N.t('sp_' + v))); r.appendChild(ui.icon('check', 'ck'));
+          r.onenter = r.onclick = function () { N.store.set('splash', v); paintSp(); N.splashPreview(v); };
+          p.appendChild(r); spRows.push(r);
+        });
+        paintSp();
+        p.appendChild(el('div', 'note', N.t('splashNote')));
         p.appendChild(el('div', 'sp-s', N.t('display')));
         p.appendChild(N.subs.seg(N.t('reduce'), onOff, function () { return N.store.get('calm', false); }, function (v) {
           N.store.set('calm', v); document.body.classList.toggle('calm', v);

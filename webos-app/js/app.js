@@ -57,7 +57,7 @@
   function splashExit() {
     if (splash.done) return; splash.done = true; clearTimeout(splash.dotsT); clearTimeout(splash.failT);
     var s = $('splash'); s.classList.add('out');
-    setTimeout(function () { s.style.display = 'none'; }, 450);
+    setTimeout(function () { s.style.display = 'none'; s.innerHTML = ''; }, 450);
   }
   N.splashReady = function () {
     if (splash.done) return;

@@ -1,6 +1,6 @@
 {
   "id": "com.nama30.webos",
-  "version": "1.9.4",
+  "version": "1.9.5",
   "vendor": "community",
   "type": "web",
   "main": "index.html",
@@ -8,6 +8,7 @@
   "icon": "icon.png",
   "largeIcon": "icon-130.png",
   "iconColor": "#F0454A",
+  "splashBackground": "splash.png",
   "resolution": "1920x1080",
   "disableBackHistoryAPI": true,
   "requiredPermissions": [

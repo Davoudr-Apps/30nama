@@ -1,4 +1,4 @@
-## What's new (v1.1 – v1.9.4)
+## What's new (v1.1 – v1.9.5)
 
 > Screenshots below use demo data and placeholder artwork.
 
@@ -9,6 +9,7 @@
 - Smooth, lag-free movement across posters and pages, tuned for TV hardware
 - Full Persian (right-to-left) layout
 - New app icon on the TV home screen: the 30nama cube on flat crimson, filling the whole tile (v1.9.4)
+- Six launch screens to choose from in **Settings > Display > Launch screen**: Curtain & Letterbox (default), Poster Mosaic (posters from your last visit), Persian Wordmark, Minimal Light, Aurora Glass and Countdown Leader. Picking one plays a short preview; it is used from the next launch (v1.9.5)
 
 | Home | Selected poster |
 |---|---|
@@ -109,6 +110,7 @@
 - ۵ پوسته رنگی و گزینه «هماهنگ با عنوان انتخاب‌شده»
 - حرکت روان و بدون کندی
 - آیکون تازه برنامه در صفحه اصلی تلویزیون: مکعب ۳۰نما روی زمینه قرمز یکدست
+- شش صفحه شروع قابل انتخاب در «تنظیمات > نمایش > صفحه شروع»: پرده و قاب سینمایی (پیش‌فرض)، دیوار پوسترها (پوسترهای بازدید قبلی)، نام فارسی، روشن و ساده، شیشه و شفق و شمارش معکوس فیلم. با انتخاب هر گزینه پیش‌نمایش آن پخش می‌شود و از اجرای بعدی استفاده می‌شود
 
 **پایداری**
 - اگر هنگام باز شدن برنامه اتصال به ۳۰نما برقرار نشود، به جای صفحه خالی پیام خطا با دکمه «تلاش دوباره» نمایش داده می‌شود و پس از برقراری اتصال، برنامه به‌طور عادی اجرا می‌شود
