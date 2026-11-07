@@ -218,10 +218,11 @@ html[dir=rtl] .card .prog i{transform-origin:right}
 /* grid tiles: the title shows only on the selected tile (D-pad focus or Magic Remote hover, which moves focus); ratings/year/type stay.
    Hidden title takes no space: the rating line is lifted into its slot (transform only, no layout). The caption sits out of flow
    below the poster, so the title opening up never moves other tiles or rows. */
-.gcell .cap .ct{opacity:0;transform:translateY(-6px);transition:opacity var(--d-focus) ease,transform var(--d-focus) ease}
-.gcell .cap .cr{transform:translateY(-32px);transition:transform var(--d-focus) ease}
+/* same on the Home row posters (v1.9.6) */
+.gcell .cap .ct,.home .rows .card .cap .ct{opacity:0;transform:translateY(-6px);transition:opacity var(--d-focus) ease,transform var(--d-focus) ease}
+.gcell .cap .cr,.home .rows .card .cap .cr{transform:translateY(-32px);transition:transform var(--d-focus) ease}
 .rgrid .gcell .cap .cr{transform:translateY(-28px)}
-.gcell .card.focus .cap .ct,.gcell .card.focus .cap .cr{opacity:1;transform:none}
+.gcell .card.focus .cap .ct,.gcell .card.focus .cap .cr,.home .rows .card.focus .cap .ct,.home .rows .card.focus .cap .cr{opacity:1;transform:none}
 /* focused poster: info overlay */
 .ov{position:absolute;inset:0;border-radius:inherit;z-index:2;display:flex;flex-direction:column;justify-content:space-between;padding:14px;background:linear-gradient(to top,rgba(6,7,10,.97) 0,rgba(6,7,10,.88) 48%,rgba(6,7,10,.2) 78%,rgba(6,7,10,.35));opacity:0;pointer-events:none;transition:opacity 200ms var(--e-out)}
 .card.focus .ov{opacity:1;pointer-events:auto;transition:opacity 260ms var(--e-out) 260ms}
