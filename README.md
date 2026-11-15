@@ -1,3 +1,7 @@
+**[⬇️ Download the latest version (v1.9.6)](https://github.com/Davoudr-Apps/30nama/raw/main/dist/com.nama30.webos_1.9.6_all.ipk)**
+
+Install on the TV (Developer Mode on): `ares-install --device tv com.nama30.webos_1.9.6_all.ipk`
+
 Thanks to [mamali6](https://github.com/mamali6) for [30nama-webos](https://github.com/mamali6/30nama-webos) which was used as base code for applying the customizaitons.
 
 ## Features
