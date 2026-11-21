@@ -594,27 +594,20 @@
   /* ---------- episodes sheet (series, Down) ---------- */
   P.openEps = function () {
     if (P.items.length < 2) return;
-    var box = $('player-eps'), tr = box.querySelector('.eptrack'); tr.innerHTML = '';
-    var cur = P.items[P.index], season = (cur.info && cur.info.season) || 1, tiles = [], focusEl = null;
-    var hd = box.querySelector('.peps-h'); if (!hd) { hd = N.el('div', 'peps-h'); box.insertBefore(hd, tr); }
-    P.items.forEach(function (it, i) {
-      if (((it.info && it.info.season) || 1) !== season) return;
-      var t = N.ui.epTile(it, i, {}); t.onclick = function () { P.closeEps(); P.playIndex(i); };
-      t.onfocus2 = function () { N.ui.slideTo(tr, t._x); };
-      if (i === P.index) { t.classList.add('now'); t.appendChild(N.el('div', 'np', N.t('nowPlaying'))); focusEl = t; }
-      tr.appendChild(t); tiles.push(t);
-    });
-    hd.textContent = N.t('season') + ' ' + season + '  \u00b7  ' + tiles.length + ' ' + N.t('episodes');
-    N.ui.layoutTrack(tr, tiles, tiles.map(function () { return 360; }));
-    // start from a clean transform (nothing left over from a previous season); put the current episode at the start edge without animating
-    var f0 = focusEl || tiles[0];
-    tr.style.transition = 'none'; tr.style.transform = ''; tr._s = null; N.ui.slideTo(tr, f0 ? f0._x : 184); void tr.offsetWidth; tr.style.transition = '';
-    box.classList.add('open'); epsOpen = true; N.nav.pushScope(box);
+    // season chips + compact list (same picker as the title page); switching season only changes the list until an episode is picked
+    var box = $('player-eps'); box.innerHTML = '';
+    var pk = N.ui.epPicker({ items: P.items, rows: 2, now: P.index,
+      watched: function (i) { var f = P.items[i].info || {}; return !!f.watched; },
+      onPick: function (i) { P.closeEps(true); if (i !== P.index) P.playIndex(i); else P.showOsd(); },
+      downFromLast: function () { P.closeEps(); return true; } });
+    box.appendChild(pk.el);
+    var f0 = pk.open(P.index);
+    box.classList.add('open'); epsOpen = true; N.nav.pushScope(box); P.epk = pk;
     N.nav.focus(f0, true); $('osd').classList.remove('off'); $('player').classList.add('osd-on', 'eps-on'); layoutSubs();
   };
   P.closeEps = function (silent) {
     if (!epsOpen) return;
-    $('player-eps').classList.remove('open'); $('player').classList.remove('eps-on'); epsOpen = false; N.nav.popScope(); N.nav.clear(); layoutSubs(); if (!silent) P.showOsd();
+    $('player-eps').classList.remove('open'); $('player').classList.remove('eps-on'); epsOpen = false; if (P.epk) { P.epk.stop(); P.epk = null; } N.nav.popScope(); N.nav.clear(); layoutSubs(); if (!silent) P.showOsd();
   };
 
   /* ---------- leaving: one Back press asks, Yes goes to the main page ---------- */
@@ -649,8 +642,8 @@
       return false; // spatial nav moves between rows; rows take Left/Right themselves
     }
     if (epsOpen) {
-      if (back || k === K.DOWN) { P.closeEps(); return true; }
-      return false;
+      if (back) { P.closeEps(); return true; }
+      return false; // the picker moves between season chips and episodes; Down past the last row closes
     }
     if (back) { P.askExit(); return true; } // one press: ask to leave
     if (P.backFocus) {

@@ -431,7 +431,7 @@
 
   /* ================= Details ================= */
   S.details = function (root, params) {
-    var dead = false, epsOpen = false, lastFocus = null, swT = null, curS = null, sheetScope = null;
+    var dead = false, epsOpen = false, lastFocus = null, sheetScope = null;
     root.classList.add('det');
     N.stage.details(true); N.stage.dim(0);
     var sk = el('div', 'skel-wrap'), skb = el('div', 'sk-bb'); skb.style.top = '240px';
@@ -476,7 +476,7 @@
       if (resume) items.forEach(function (it, i) { if (it.info && String(it.info.file_id) === String(resume.file_id)) startIdx = i; });
       function play(i, withResume) {
         // leaving for the player: remember where we were, and fully hide the episodes sheet (it would otherwise be drawn over the video)
-        backToSheet = epsOpen; lastFocus = epsOpen ? null : N.nav.cur; if (epsOpen) { epMem[curS] = i; clearTimeout(swT); swT = null; hideEps(); }
+        backToSheet = epsOpen; lastFocus = epsOpen ? null : N.nav.cur; if (epsOpen) { picker.remember(i); picker.stop(); hideEps(); }
         N.player.start(post, items, i, withResume ? resume : null);
       }
       var info0 = items[startIdx] && items[startIdx].info || {};
@@ -497,65 +497,29 @@
       N.onListChange = function () { wB._paint(); lB._paint(); };
       wB.onfocus2 = lB.onfocus2 = function () { setX(false); };
 
-      /* episodes sheet */
-      var sheet = null, tabs = null, wrap = null, track = null, tmeta = null, seasons = [], map = {}, epMem = {}, tileBy = {}, backToSheet = false;
+      /* episodes sheet: season chips + compact episode list (ui.epPicker) */
+      var sheet = null, picker = null, backToSheet = false;
+      function progOf(idx) {
+        var it = items[idx];
+        if (resume && it && it.info && String(it.info.file_id) === String(resume.file_id) && Number(resume.duration) > 0) return Number(resume.time) / Number(resume.duration);
+        return 0;
+      }
       if (epB) {
-        sheet = el('div', 'sheet-eps'); tabs = el('div', 'tabs'); wrap = el('div', 'eptrack-w'); track = el('div', 'eptrack'); wrap.appendChild(track);
-        tmeta = el('div', 'tabs-meta tab'); sheet.appendChild(tabs); sheet.appendChild(tmeta); sheet.appendChild(wrap); root.appendChild(sheet);
-        items.forEach(function (it, i) { var s = (it.info && it.info.season) || 1; if (!map[s]) { map[s] = []; seasons.push(s); } map[s].push(i); });
-        seasons.forEach(function (s, si) {
-          var t = ui.pill(N.t('season') + ' ' + s, function () { focusEp(); }, false); t._s = s;
-          t.onfocus2 = function () { showSeason(s); };
-          t.onnav = function (dir) {
-            if (dir === 'down') { flush(); return epTarget(curS) || true; }
-            if (dir === 'up') return true;
-            var d = ui.step(dir), n = tabs.children[si + d]; return n || true;
-          };
-          tabs.appendChild(t);
-        });
+        sheet = el('div', 'sheet-eps');
+        picker = ui.epPicker({ items: items, rows: 3, now: -1, progress: progOf,
+          watched: function (idx) { var i = items[idx].info || {}; return !!i.watched || progOf(idx) >= 0.92; },
+          onPick: function (idx) { play(idx, true); } });
+        sheet.appendChild(picker.el); root.appendChild(sheet);
       }
-      // tile to focus when entering season s: the remembered episode (an index, never a node: tiles are rebuilt on every season switch), else the first
-      function epTarget(s) { var i = epMem[s]; return (i !== undefined && tileBy[i]) || track.firstChild; }
-      function buildSeason(s) {
-        track.innerHTML = ''; tileBy = {}; var tiles = [];
-        map[s].forEach(function (idx) {
-          var it = items[idx], prog = 0;
-          if (resume && it.info && String(it.info.file_id) === String(resume.file_id) && Number(resume.duration) > 0) prog = Number(resume.time) / Number(resume.duration);
-          var t = ui.epTile(it, idx, { progress: prog });
-          t.onclick = function () { play(idx, true); };
-          t.onfocus2 = function () { ui.slideTo(track, t._x); epMem[s] = idx; };
-          t.onnav = function (dir) {
-            if (dir === 'up') { for (var q = 0; q < tabs.children.length; q++) if (tabs.children[q]._s === curS) return tabs.children[q]; return true; }
-            if (dir === 'down') return true;
-            var d = ui.step(dir), i = tiles.indexOf(t); return tiles[i + d] || true;
-          };
-          t._idx = idx; tileBy[idx] = t; track.appendChild(t); tiles.push(t);
-        });
-        ui.layoutTrack(track, tiles, tiles.map(function () { return 360; }));
-        // position the track for the remembered tile (no animation, nothing carried over from another season)
-        var tg = epTarget(s);
-        track.style.transition = 'none'; track._s = null; track.style.transform = ''; ui.slideTo(track, tg ? tg._x : 184); void track.offsetWidth; track.style.transition = '';
-        tmeta.textContent = tiles.length + ' ' + N.t('episodes');
-      }
-      function showSeason(s, now) {
-        if (s === curS) return; curS = s;
-        for (var q = 0; q < tabs.children.length; q++) tabs.children[q].classList.toggle('cur', tabs.children[q]._s === s);
-        clearTimeout(swT); swT = null;
-        if (now) { buildSeason(s); wrap.classList.remove('sw'); return; }
-        wrap.classList.add('sw'); swT = setTimeout(function () { swT = null; buildSeason(s); wrap.classList.remove('sw'); }, 160);
-      }
-      function flush() { if (swT) { clearTimeout(swT); swT = null; buildSeason(curS); wrap.classList.remove('sw'); } }
-      function focusEp() { flush(); var t = epTarget(curS); if (t) N.nav.focus(t, true); }
       // open the sheet on episode index idx (default: resume/start episode); inst = no slide animation (restoring after playback)
       function openEps(idx, inst) {
         if (epsOpen || !sheet) return; epsOpen = true;
         if (idx === undefined || idx === null || !items[idx]) idx = startIdx;
-        var s0 = (items[idx].info && items[idx].info.season) || seasons[0];
-        epMem[s0] = idx; curS = null; showSeason(s0, true);
+        var t0 = picker.open(idx);
         if (inst) { root.classList.add('inst'); }
         root.classList.add('eps'); sheetScope = sheet; N.nav.pushScope(sheet);
         if (inst) { void root.offsetWidth; setTimeout(function () { root.classList.remove('inst'); }, 60); }
-        N.nav.focus(epTarget(s0), true);
+        N.nav.focus(t0, true);
       }
       // hide the sheet completely (leave it for playback): visibility is hidden as soon as .eps goes away
       function hideEps() {
@@ -579,6 +543,7 @@
         return false;
       };
       current.closeRv = function () { if (rvOpen) { N.nav.popScope(); rvOpen = null; } };
+      current.stopEps = function () { if (picker) picker.stop(); };
 
       /* ---------- TMDB extras (progressive; absent without a token) ---------- */
       var xEl = null, xRows = [], xOn = false, rvOpen = null;
@@ -714,7 +679,7 @@
         if (items.length) play(startIdx, true); else N.toast(N.isLoggedIn() ? N.t('noStream') : N.t('playLogin'), 3500);
       }
     }
-    var current = { destroy: function () { dead = true; N.onListChange = null; clearTimeout(swT); if (sheetScope) { N.nav.popScope(); sheetScope = null; } if (current.closeRv) current.closeRv(); } };
+    var current = { destroy: function () { dead = true; N.onListChange = null; if (current.stopEps) current.stopEps(); if (sheetScope) { N.nav.popScope(); sheetScope = null; } if (current.closeRv) current.closeRv(); } };
     load();
     return current;
   };

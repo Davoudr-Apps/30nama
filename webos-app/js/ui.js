@@ -170,15 +170,104 @@
     var ai = (a && a.info) || {}, bi = (b && b.info) || {};
     return (ui.epNum(ai.season) - ui.epNum(bi.season)) || (ui.epNum(ai.episode) - ui.epNum(bi.episode));
   };
-  ui.epTile = function (it, idx, o) {
-    o = o || {}; var i = it.info || {}, n = ui.epLabel(i.episode, idx + 1), e = el('div', 'ep f');
-    e.appendChild(el('div', 'en tab' + (n.length > 3 ? ' sm' : ''), 'E' + (/^\d$/.test(n) ? '0' + n : n)));
-    e.appendChild(el('div', 'et', ui.epName(it) || (N.t('episode') + ' ' + n)));
-    var dur = Number(i.duration || i.time || 0);
-    if (o.watched) { var ck = ui.icon('check', 'chk'); e.appendChild(ck); }
-    else if (dur) { if (dur > 600) dur = dur / 60; e.appendChild(el('div', 'ed tab', Math.round(dur) + ' ' + N.t('min'))); }
-    if (o.progress > 0) { var pb = el('div', 'ep-p'), pi = el('i'); pi.style.transform = 'scaleX(' + Math.min(1, o.progress) + ')'; pb.appendChild(pi); e.appendChild(pb); }
-    return e;
+  /* Season / episode picker (details page + player): a row of season chips with episode counts over a compact,
+     row-wrapping episode list (4 per row, `rows` rows visible, scrolled a row at a time). Seasons switch when a chip is selected.
+     o: { items, rows, now (playing index or -1), progress(idx) 0..1, watched(idx), onPick(idx), downFromLast() } */
+  ui.epPicker = function (o) {
+    var items = o.items, ROWS = o.rows || 3, COLS = 4, RH = 120; // row pitch: 104 item + 16 gap
+    var root = el('div', 'epk'), tabs = el('div', 'epk-tabs'), tin = el('div', 'epk-tin'), meta = el('div', 'epk-meta tab'),
+      win = el('div', 'epk-win'), grid = el('div', 'epk-grid'), bar = el('div', 'epk-bar'), thumb = el('i');
+    tabs.appendChild(tin); win.appendChild(grid); bar.appendChild(thumb);
+    root.appendChild(tabs); root.appendChild(meta); root.appendChild(win); root.appendChild(bar);
+    win.style.height = (ROWS * RH - 16 + 20) + 'px'; bar.style.height = (ROWS * RH - 16) + 'px';
+    var seasons = [], map = {}, mem = {}, chips = [], tiles = [], byIdx = {}, cur = null, vr = 0, swT = null, tx = 0;
+    function seasonOf(idx) { var i = items[idx] && items[idx].info; return (i && i.season) || 1; }
+    items.forEach(function (it, i) { var s = seasonOf(i); if (!map[s]) { map[s] = []; seasons.push(s); } map[s].push(i); });
+    function chipOf(s) { for (var q = 0; q < chips.length; q++) if (chips[q]._s === s) return chips[q]; return null; }
+    seasons.forEach(function (s, si) {
+      var c = ui.pill('', function () { api.focusEp(); }, false); c.className += ' epk-s'; c._s = s;
+      c.appendChild(el('span', 'sl', N.t('season') + ' ' + s)); c.appendChild(el('span', 'sc tab', String(map[s].length)));
+      c.onfocus2 = function () { show(s); revealChip(c); };
+      c.onnav = function (dir) {
+        if (dir === 'down') { flush(); return target() || true; }
+        if (dir === 'up') return true;
+        return chips[si + ui.step(dir)] || true;
+      };
+      tin.appendChild(c); chips.push(c);
+    });
+    // keep the selected chip inside the chip strip (many seasons); the pointer never scrolls it
+    function revealChip(c) {
+      if (N.nav.hovering) return;
+      var w = tabs.getBoundingClientRect(), r = c.getBoundingClientRect(), d = 0;
+      if (r.right > w.right - 8) d = (w.right - 8) - r.right; else if (r.left < w.left + 8) d = (w.left + 8) - r.left;
+      if (d) { tx += d; tin.style.transform = 'translateX(' + tx + 'px)'; tabs.classList.toggle('scr', Math.abs(tx) > 1); }
+    }
+    function nRows() { return Math.ceil(tiles.length / COLS); }
+    function setRow(r, inst) {
+      r = Math.max(0, Math.min(r, nRows() - ROWS)); if (r === vr && !inst) return; vr = r;
+      if (inst) grid.style.transition = 'none';
+      grid.style.transform = r ? 'translateY(' + (-r * RH) + 'px)' : '';
+      var n = nRows(); bar.style.visibility = n > ROWS ? 'visible' : 'hidden';
+      if (n > ROWS) { thumb.style.height = (ROWS / n * 100) + '%'; thumb.style.top = (r / n * 100) + '%'; }
+      if (inst) { void grid.offsetWidth; grid.style.transition = ''; }
+    }
+    function reveal(k) { var r = Math.floor(k / COLS); if (r < vr) setRow(r); else if (r >= vr + ROWS) setRow(r - ROWS + 1); }
+    win.onwheel = function (e) { if (tiles.length) setRow(vr + (e.deltaY > 0 ? 1 : -1)); if (e.preventDefault) e.preventDefault(); };
+    function tile(idx, k) {
+      var it = items[idx], i = it.info || {}, n = ui.epLabel(i.episode, idx + 1), t = el('div', 'eq f');
+      t.appendChild(el('div', 'eq-n tab' + (n.length > 3 ? ' sm' : ''), /^\d$/.test(n) ? '0' + n : n));
+      var x = el('div', 'eq-x'), ti = el('div', 'eq-t', ui.epName(it) || (N.t('episode') + ' ' + n)), sub = el('div', 'eq-s');
+      ti.dir = 'auto'; x.appendChild(ti); x.appendChild(sub); t.appendChild(x);
+      var pr = o.progress ? o.progress(idx) : 0, w = o.watched ? o.watched(idx) : false, dur = Number(i.duration || i.time || 0);
+      if (dur > 600) dur = dur / 60; dur = Math.round(dur);
+      if (idx === o.now) { t.classList.add('now'); sub.appendChild(el('span', 'np', N.t('nowPlaying'))); if (dur) sub.appendChild(el('span', 'tab', ' · ' + dur + ' ' + N.t('min'))); }
+      else if (w) { t.classList.add('seen'); sub.appendChild(ui.icon('check', 'ck')); sub.appendChild(el('span', '', N.t('watched'))); }
+      else if (pr > 0 && dur) sub.appendChild(el('span', 'tab', Math.max(1, Math.round(dur * (1 - Math.min(1, pr)))) + ' ' + N.t('minLeft')));
+      else if (dur) sub.appendChild(el('span', 'tab', dur + ' ' + N.t('min')));
+      if (pr > 0 && !w) { var pb = el('div', 'eq-p'), pi = el('i'); pi.style.width = Math.round(Math.min(1, pr) * 100) + '%'; pb.appendChild(pi); t.appendChild(pb); }
+      t.onclick = function () { if (o.onPick) o.onPick(idx); };
+      t.onfocus2 = function () { mem[cur] = idx; if (!N.nav.hovering) reveal(k); };
+      t.onnav = function (dir) {
+        if (dir === 'up') return k >= COLS ? tiles[k - COLS] : (chipOf(cur) || true);
+        if (dir === 'down') {
+          if (k + COLS < tiles.length) return tiles[k + COLS];
+          if (Math.floor(k / COLS) < nRows() - 1) return tiles[tiles.length - 1]; // short last row
+          return o.downFromLast ? (o.downFromLast() || true) : true;
+        }
+        return tiles[k + ui.step(dir)] || true;
+      };
+      byIdx[idx] = t; return t;
+    }
+    function build(s) {
+      grid.innerHTML = ''; tiles = []; byIdx = {};
+      map[s].forEach(function (idx, k) { var t = tile(idx, k); grid.appendChild(t); tiles.push(t); });
+      meta.textContent = N.t('season') + ' ' + s + '  ·  ' + tiles.length + ' ' + N.t('episodes');
+      var tg = target(); vr = -1; setRow(tg ? Math.floor(tiles.indexOf(tg) / COLS) : 0, true);
+    }
+    // switch the list to season s (a short fade unless now)
+    function show(s, now) {
+      if (s === cur) return; cur = s;
+      for (var q = 0; q < chips.length; q++) chips[q].classList.toggle('cur', chips[q]._s === s);
+      clearTimeout(swT); swT = null;
+      if (now) { build(s); win.classList.remove('sw'); return; }
+      win.classList.add('sw'); swT = setTimeout(function () { swT = null; build(s); win.classList.remove('sw'); }, 160);
+    }
+    function flush() { if (swT) { clearTimeout(swT); swT = null; build(cur); win.classList.remove('sw'); } }
+    // tile to focus in the shown season: the remembered episode (an index; tiles are rebuilt on every switch), else the first
+    function target() { var i = mem[cur]; return (i !== undefined && byIdx[i]) || tiles[0] || null; }
+    var api = {
+      el: root,
+      // show idx's season with idx as the remembered episode; returns the tile to focus
+      open: function (idx) {
+        if (!items[idx]) idx = map[seasons[0]][0];
+        var s = seasonOf(idx); mem[s] = idx; cur = null; tx = 0; tin.style.transform = ''; tabs.classList.remove('scr');
+        show(s, true); var c = chipOf(s); if (c) revealChip(c); return target();
+      },
+      remember: function (idx) { if (items[idx]) mem[seasonOf(idx)] = idx; },
+      focusEp: function () { flush(); var t = target(); if (t) N.nav.focus(t, true); },
+      stop: function () { clearTimeout(swT); swT = null; }
+    };
+    return api;
   };
   ui.skelCard = function (kind) { var c = el('div', 'card skel k-' + (kind || 'p')); return c; };
 

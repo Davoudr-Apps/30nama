@@ -1,4 +1,4 @@
-## What's new (v1.1 – v1.9.6)
+## What's new (v1.1 – v1.10.0)
 
 > Screenshots below use demo data and placeholder artwork.
 
@@ -44,6 +44,7 @@
   - **IMDb Top 250** (Movies, when 30nama provides the list), ranked with #1, #2…
 - Magic Remote pointer: pointing selects without moving the page; resting at a screen edge scrolls
 - Fast tabs: pages are kept on the TV between launches and loaded ahead in the background, but never while you watch or while the app is in the background
+- **Seasons and episodes** on a series page: a row of season chips, each with its episode count and a clear selected state, over a compact episode list (number, title, length, time left, watched check), four per row and up to 12 on screen at once. Arrows or the Magic Remote move between seasons and episodes; long seasons and many seasons scroll (v1.10.0)
 
 | Grid: title on the selected poster | Home rows: title on the selected poster |
 |---|---|
@@ -61,7 +62,9 @@
 |---|---|
 | ![Watchlist](screenshots/07-watchlist.png) | ![Title page](screenshots/08-title-page.png) |
 
-![Episodes](screenshots/09-episodes.png)
+| Seasons & episodes | Player: episodes from any season |
+|---|---|
+| ![Seasons and episodes](screenshots/09-episodes.png) | ![Player episodes with seasons](screenshots/34-player-episodes-seasons.png) |
 
 ### Player
 - Control bar on one floating panel: −10 s, Play/Pause, +10 s, "Ends at" time, Quality, Subtitles & audio, Episodes, Next episode
@@ -70,6 +73,7 @@
 - Redesigned **Skip intro** with a countdown line, usable with arrows or the pointer
 - Back button on screen; pressing Back once asks **"Stop watching?" (Yes / No)** and Yes returns to the main page
 - Remote shortcuts: red = Subtitles & audio panel, green = subtitles on/off
+- **Episodes** panel in the player has the same season chips: pick an episode from any season without leaving playback. Switching season only changes the list; playback changes when you pick an episode. It opens on the episode that is playing (v1.10.0)
 
 | Controls | Skip intro |
 |---|---|
@@ -143,6 +147,7 @@
 - صفحه‌های «لیست تماشا» و «پسندیده‌ها» (دکمه زرد و آبی ریموت)
 - زبانه‌های کناری ثابت: جدیدترین (بر اساس سال انتشار)، به‌زودی، محبوب، به‌روزشده، ۲۵۰ برتر IMDb
 - پشتیبانی از نشانگر مجیک ریموت با پیمایش از لبه صفحه
+- انتخاب فصل و قسمت در صفحه سریال: ردیف دکمه‌های فصل با تعداد قسمت‌ها و حالت انتخاب واضح، و فهرست فشرده قسمت‌ها (شماره، نام، مدت، زمان باقی‌مانده و علامت دیده‌شده)؛ چهار قسمت در هر ردیف و تا ۱۲ قسمت هم‌زمان روی صفحه
 - بارگذاری سریع زبانه‌ها؛ بدون دریافت داده هنگام تماشا
 
 **پلیر**
@@ -152,6 +157,7 @@
 - دکمه «رد کردن تیتراژ» جدید
 - دکمه بازگشت و پرسش «پخش متوقف شود؟» با یک بار فشردن Back
 - دکمه قرمز برای پنل زیرنویس، دکمه سبز برای روشن و خاموش کردن زیرنویس
+- پنل «قسمت‌ها» در پلیر هم دکمه‌های فصل دارد: انتخاب قسمت از هر فصل بدون خروج از پخش؛ تغییر فصل فقط فهرست را عوض می‌کند و پخش با انتخاب قسمت تغییر می‌کند
 
 **زیرنویس**
 - نمایش هم‌زمان دو زیرنویس، با انتخاب این‌که کدام بالاتر باشد
