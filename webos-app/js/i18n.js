@@ -2,7 +2,7 @@
   var S = {
     en: {
       suggestions: 'Suggestions', cwEmpty: 'Nothing in progress yet. Start something and it shows up here.', watchlist: 'Watchlist', liked: 'Liked',
-      watchHint: 'Yellow button on any poster adds or removes it', likeHint: 'Blue button on any poster likes or unlikes it', listEmpty: 'Nothing here yet.',
+      watchHint: 'Yellow button on any poster adds or removes it', likeHint: 'Blue button on any poster likes or unlikes it', listEmpty: 'Nothing here yet.', cwHint: 'Red button removes a title from Continue', cwRemoved: 'Removed from Continue',
       addedWatch: 'Added to watchlist', removedWatch: 'Removed from watchlist', addedLike: 'Liked', removedLike: 'Unliked', addWatch: 'Watchlist', inWatch: 'In watchlist', like: 'Like', liked1: 'Liked',
       theme: 'Theme', th_media: 'Match the selected title', th_media_n: 'Background follows the selected poster', th_crimson: 'Crimson', th_ocean: 'Ocean', th_emerald: 'Emerald', th_amber: 'Amber', th_violet: 'Violet', splashLook: 'Launch screen', splashNote: 'Shown when the app opens. Pick one to preview it; it is used from the next launch.', sp_mosaic: 'Poster Mosaic', sp_persian: 'Persian Wordmark', sp_light: 'Minimal Light', sp_curtain: 'Curtain & Letterbox', sp_aurora: 'Aurora Glass', sp_leader: 'Countdown Leader',
       leaveTitle: 'Stop watching?', leaveBody: 'Go back to the main page. Your place is saved.', yes: 'Yes', no: 'No',
@@ -40,7 +40,7 @@
     },
     fa: {
       suggestions: 'پیشنهادها', cwEmpty: 'هنوز چیزی در حال تماشا نیست.', watchlist: 'لیست تماشا', liked: 'پسندیده‌ها',
-      watchHint: 'دکمه زرد روی هر پوستر آن را به لیست اضافه یا حذف می‌کند', likeHint: 'دکمه آبی روی هر پوستر آن را می‌پسندد یا برمی‌دارد', listEmpty: 'هنوز چیزی اینجا نیست.',
+      watchHint: 'دکمه زرد روی هر پوستر آن را به لیست اضافه یا حذف می‌کند', likeHint: 'دکمه آبی روی هر پوستر آن را می‌پسندد یا برمی‌دارد', listEmpty: 'هنوز چیزی اینجا نیست.', cwHint: 'دکمه قرمز عنوان را از «ادامه» حذف می‌کند', cwRemoved: 'از «ادامه» حذف شد',
       addedWatch: 'به لیست تماشا اضافه شد', removedWatch: 'از لیست تماشا حذف شد', addedLike: 'پسندیده شد', removedLike: 'از پسندیده‌ها حذف شد', addWatch: 'لیست تماشا', inWatch: 'در لیست تماشا', like: 'پسندیدن', liked1: 'پسندیده',
       theme: 'پوسته', th_media: 'هماهنگ با عنوان انتخاب‌شده', th_media_n: 'پس‌زمینه از پوستر انتخاب‌شده', th_crimson: 'قرمز', th_ocean: 'آبی', th_emerald: 'سبز', th_amber: 'کهربایی', th_violet: 'بنفش', splashLook: 'صفحه شروع', splashNote: 'هنگام باز شدن برنامه نمایش داده می‌شود. با انتخاب هر گزینه پیش‌نمایش آن پخش می‌شود و از اجرای بعدی استفاده می‌شود.', sp_mosaic: 'دیوار پوسترها', sp_persian: 'نام فارسی', sp_light: 'روشن و ساده', sp_curtain: 'پرده و قاب سینمایی', sp_aurora: 'شیشه و شفق', sp_leader: 'شمارش معکوس فیلم',
       leaveTitle: 'پخش متوقف شود؟', leaveBody: 'به صفحه اصلی برمی‌گردید. جای تماشا ذخیره می‌شود.', yes: 'بله', no: 'خیر',

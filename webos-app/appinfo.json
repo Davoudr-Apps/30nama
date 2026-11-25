@@ -1,6 +1,6 @@
 {
   "id": "com.nama30.webos",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "vendor": "community",
   "type": "web",
   "main": "index.html",

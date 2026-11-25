@@ -1,4 +1,4 @@
-## What's new (v1.1 – v1.10.0)
+## What's new (v1.1 – v1.10.1)
 
 > Screenshots below use demo data and placeholder artwork.
 
@@ -33,6 +33,8 @@
 
 ### Browsing
 - **Suggestions** and **Continue** (with progress bars) in the side menu
+  - **Continue** now shows what you actually watch on the TV, most recent first: the TV records your progress itself and merges it with your 30nama account's list (the same list the website shows), one card per title, the newer progress wins. Series open on the right episode (the next one once an episode is finished), finished titles drop off, and the **red** button removes a title. Settings > About > Version (press OK) shows a small diagnostic: which source the list came from, item counts, the last error and whether progress reports reach 30nama (v1.10.1)
+  - Watchlist and Liked are kept on the TV: the 30nama API the app uses has no endpoint for the account's watchlist or favourites, so they do not sync with the website (v1.10.1)
 - Every poster shows its title, **IMDb rating** (yellow), **30nama rating** (red), year and type
   - In the Movies / Series / Anime, Watchlist, Liked and Search grids, the title appears only on the selected poster (remote arrows or Magic Remote pointer), for a cleaner grid; ratings, year and type always stay (v1.9.1). The hidden title takes no space, so the ratings line sits right under the poster; the title opens below the selected poster without moving any other poster (v1.9.3). The Home rows work the same way (v1.9.6)
 - The selected poster shows genre, summary, season count and, with a TMDB key, the next episode date
@@ -141,6 +143,8 @@
 
 **مرور**
 - «پیشنهادها» و «ادامه» در منو
+  - «ادامه» حالا همان چیزی را نشان می‌دهد که روی تلویزیون تماشا می‌کنید، جدیدترین اول: تلویزیون پیشرفت پخش را خودش ذخیره می‌کند و با فهرست حساب ۳۰نما (همان فهرست سایت) ادغام می‌کند؛ هر عنوان یک کارت، پیشرفت جدیدتر برنده است. سریال‌ها روی قسمت درست باز می‌شوند (پس از تمام شدن یک قسمت، قسمت بعد)، عنوان‌های تمام‌شده حذف می‌شوند و دکمه **قرمز** عنوان را از فهرست برمی‌دارد. در تنظیمات > درباره > نسخه (OK را بزنید) یک گزارش کوچک عیب‌یابی هست: منبع فهرست، تعداد موارد، آخرین خطا و این‌که گزارش پیشرفت به ۳۰نما می‌رسد یا نه (v1.10.1)
+  - لیست تماشا و پسندیده‌ها روی تلویزیون نگه داشته می‌شوند: API ۳۰نما که برنامه استفاده می‌کند راهی برای لیست تماشا یا علاقه‌مندی‌های حساب ندارد، پس با سایت همگام نمی‌شوند (v1.10.1)
 - امتیاز IMDb (زرد) و ۳۰نما (قرمز) روی هر پوستر
 - در جدول‌های فیلم، سریال، انیمه، لیست‌ها و جستجو، نام عنوان فقط روی پوستر انتخاب‌شده نمایش داده می‌شود؛ وقتی نام پنهان است جایی نمی‌گیرد و امتیازها درست زیر پوستر قرار می‌گیرند، بدون جابه‌جا شدن پوسترهای دیگر؛ ردیف‌های صفحه اصلی هم همین‌طور
 - خلاصه، ژانر و دکمه‌های لیست تماشا و پسندیدن روی پوستر انتخاب‌شده

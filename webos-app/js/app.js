@@ -38,11 +38,14 @@
   N.dropHome = function () { hc.p = null; cwc.p = null; };
   // continue-watching list: kept 2 minutes, dropped whenever playback ends (it changes then)
   var cwc = { t: 0, p: null };
+  // resolves to the merged list (server + progress recorded on this TV, see cw.js); server failures leave the local part
   N.getCW = function () {
-    if (!N.isLoggedIn()) return Promise.resolve(null);
-    if (cwc.p && Date.now() - cwc.t < 120000) return cwc.p;
-    cwc.t = Date.now(); cwc.p = N.api.get('continue_watching').catch(function () { cwc.p = null; return null; });
-    return cwc.p;
+    if (!N.isLoggedIn()) return Promise.resolve(N.cw.merge(null, 'not signed in'));
+    if (!(cwc.p && Date.now() - cwc.t < 120000)) {
+      cwc.t = Date.now();
+      cwc.p = N.api.get('continue_watching').then(function (r) { return { r: r }; }, function (e) { cwc.p = null; return { r: null, e: (e && (e.msg || e.message)) || 'error' }; });
+    }
+    return cwc.p.then(function (x) { return N.cw.merge(x.r, x.e); });
   };
   N.dropCW = function () { cwc.p = null; };
   // archive pages: kept 5 minutes per (slug, sort, page) so revisiting Movies/Series/Anime is instant

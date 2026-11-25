@@ -3,11 +3,6 @@
   var S = N.screens = {};
   var el = N.el, ui = N.ui;
 
-  function extractPosts(r) {
-    if (!r) return [];
-    var a = r.posts || r.items || r.list || (r instanceof Array ? r : []);
-    return a.map(function (x) { return x && x.post ? x.post : x; }).filter(function (x) { return x && x.id; });
-  }
   function userObj(r) { return (r && r.user_session) ? r : (r && r.user && r.user.user_session ? r.user : null); }
   function errorView(root, e, retry) {
     root.innerHTML = '';
@@ -114,26 +109,24 @@
       var cw = N.getCW();
       var tmOn = N.tmdb.enabled(), tmH = Promise.resolve([]);
       if (tmOn) { root.classList.add('tm'); N.tmdb.startHome(); tmH = N.tmdb.heroes(6, 3200).catch(function () { return []; }); }
-      Promise.all([N.getHome(), cw, tmH]).then(function (res) { if (!dead) build(res[0], extractPosts(res[1]), res[1], res[2]); })
+      Promise.all([N.getHome(), cw, tmH]).then(function (res) { if (!dead) build(res[0], res[1] || [], res[2]); })
         .catch(function (e) { if (dead) return; N.splashReady(); errorView(root, e, function () { root.innerHTML = ''; sk = skeletonHome(root); load(); }); });
     }
 
-    function cwNorm(x0, raw) {
-      var c = x0.continue_watching || x0, t = Number(c.time || c.position || 0), d = Number(c.duration || 0);
-      var season = c.season || (c.info && c.info.season), ep = c.episode || (c.info && c.info.episode);
+    function cwNorm(c) {
+      var t = Number(c.time || 0), d = Number(c.duration || 0), season = c.season, ep = c.episode;
       var parts = [];
       if (season && ep) parts.push('S' + season + ' · E' + N.ui.epLabel(ep));
       if (d && t) parts.push(Math.max(1, Math.round((d - t) / 60)) + ' ' + N.t('minLeft'));
       return { prog: d ? Math.min(1, t / d) : 0, label: parts.join(' · ') };
     }
 
-    function build(h, cwPosts, cwRaw, tmHeroes) {
+    function build(h, cwEntries, tmHeroes) {
       root.removeChild(sk);
       heroes = ((h.hero_header && h.hero_header.posts) || []).slice(0, 8);
       if (tmHeroes && tmHeroes.length >= 3) heroes = tmHeroes;
-      var cwList = (cwRaw && (cwRaw.posts || cwRaw.items || cwRaw.list || (cwRaw instanceof Array ? cwRaw : []))) || [];
-      cwPosts.forEach(function (p) { cwIds[p.id] = true; });
-      cwPosts0 = cwPosts; cwList0 = cwList;
+      cwList0 = cwEntries; cwPosts0 = cwEntries.map(function (e) { return e.post; });
+      cwPosts0.forEach(function (p) { cwIds[p.id] = true; });
       ['new_releases', 'suggested', 'top_10', 'movies', 'series', 'anime'].forEach(function (k) {
         var ps = h[k] && h[k].posts; if (ps && ps.length) defs.push({ key: k, title: N.t(k), kind: k === 'top_10' ? 'top' : 'poster', posts: k === 'top_10' ? ps.slice(0, 10) : ps });
       });
@@ -259,14 +252,28 @@
     function buildCw() {
       if (cwView) return;
       cwView = el('div', 'arch cwv'); root.appendChild(cwView);
+      paintCw();
+    }
+    function paintCw() {
+      cwView.innerHTML = ''; cwView._ty = null; cwView.style.transform = '';
       cwView.appendChild(el('div', 'ah head', N.t('continueWatching')));
-      var g = posterGrid(cwView, cwPosts0, { empty: N.isLoggedIn() ? N.t('cwEmpty') : N.t('loginRequired'), top: 180 });
+      if (cwPosts0.length) cwView.appendChild(el('div', 'head lhint', N.t('cwHint')));
+      var g = posterGrid(cwView, cwPosts0, { empty: (N.isLoggedIn() || cwPosts0.length) ? N.t('cwEmpty') : N.t('loginRequired'), top: cwPosts0.length ? 214 : 180 });
       cwCells = g.cells;
       cwCells.forEach(function (cell, i) {
-        var n = cwNorm(cwList0[i] || cell.card._post);
+        var n = cwNorm(cwList0[i]);
         if (n.label) { var r = cell.card.querySelector('.cap .cr'); if (r) { r.innerHTML = ''; r.appendChild(el('span', 'ry', n.label)); } }
         if (n.prog > 0) { var pb = el('div', 'prog'), pi = el('i'); pi.style.transform = 'scaleX(' + n.prog.toFixed(3) + ')'; pb.appendChild(pi); cell.card._holder.appendChild(pb); }
       });
+    }
+    function cwRemove() {
+      var idx = -1; for (var i = 0; i < cwCells.length; i++) if (cwCells[i].card === N.nav.cur) idx = i;
+      if (idx < 0) return false;
+      var e = cwList0[idx]; N.cw.remove(e.id); N.dropCW();
+      cwList0.splice(idx, 1); cwPosts0.splice(idx, 1); delete cwIds[e.id];
+      paintCw(); N.toast(N.t('cwRemoved') + ' \u00b7 ' + N.title(e.post), 2200);
+      var c = cwCells[Math.min(idx, cwCells.length - 1)]; if (c) N.nav.focus(c.card, true); else N.nav.clear();
+      return true;
     }
     function hoverOk(e) {
       if (tab === 'cw' || !e.classList.contains('card')) return st.mode === 'hero' || !e.classList.contains('btn');
@@ -414,10 +421,12 @@
       return true;
     }
 
+    function cwKey(e) { return e.keyCode === N.keys.RED && tab === 'cw' && !N.player.open && !dead ? cwRemove() : false; }
+    N.nav.pushHandler(cwKey);
     load();
     return {
       destroy: function () {
-        dead = true; clearTimeout(fT); clearTimeout(bbT); clearTimeout(heroT); clearInterval(advT); document.removeEventListener('keydown', act);
+        dead = true; clearTimeout(fT); clearTimeout(bbT); clearTimeout(heroT); clearInterval(advT); document.removeEventListener('keydown', act); N.nav.popHandler(cwKey);
         N.nav.offSettle(follow); N.stage.cancel();
         var c = root.querySelector('.clock'); if (c) clearInterval(c._t);
       },
@@ -455,6 +464,8 @@
       var items = (st && st.hls ? st.hls.slice() : []);
       items.sort(ui.epCmp);
       var resume = st && st.continue_watching && st.continue_watching.file_id ? st.continue_watching : null;
+      var loc = N.cw.get(post.id); // progress recorded on this TV wins (the server's copy may be missing or older)
+      if (loc && loc.file_id && items.some(function (it) { return it.info && String(it.info.file_id) === String(loc.file_id); })) resume = { file_id: loc.file_id, time: loc.time, duration: loc.duration };
       var po = post.options || {}, isSeries = !!po.is_series;
       var tmOn = N.tmdb.enabled(), dpage = el('div', 'd-page'), col = el('div', 'det-col');
       if (tmOn) root.classList.add('tm');
@@ -1158,7 +1169,19 @@
       },
       about: function (p) {
         p.appendChild(info('30nama TV', ''));
-        p.appendChild(info(N.t('version'), N.config.appVersion || N.config.version));
+        // version row: OK shows a small Continue-watching diagnostic (for a photo when the list looks wrong)
+        var ver = action(N.t('version'), function () {
+          if (diag.style.display === 'none') { paintDiag(); diag.style.display = ''; } else diag.style.display = 'none';
+        });
+        ver.classList.add('nof'); ver.appendChild(el('div', 'v', N.config.appVersion || N.config.version)); p.appendChild(ver);
+        var diag = el('div', 'note cwdiag'); diag.style.display = 'none'; diag.dir = 'ltr'; p.appendChild(diag);
+        function paintDiag() {
+          var D = N.cw.diag, ago = function (t) { return t ? Math.round((Date.now() - t) / 1000) + 's ago' : 'never'; };
+          diag.textContent = 'Continue: source ' + D.src + ' · shown ' + D.shown + ' · server ' + (D.server === null ? '-' : D.server) + ' · local ' + D.local +
+            '\nfetched ' + ago(D.at) + (D.keys ? ' · fields ' + D.keys : '') + ' · error ' + (D.err || 'none') +
+            '\nprogress report (observer): ' + (D.obs || 'not sent yet') + (D.obsAt ? ' · ' + ago(D.obsAt) : '') +
+            '\nWatchlist ' + N.lists.all('watch').length + ' · Liked ' + N.lists.all('like').length + ' · source: this TV only (the app API has no account list endpoint)';
+        }
         p.appendChild(info(N.t('unofficial'), ''));
         p.appendChild(info(N.t('apiHost'), (N.api.host || '').replace(/^https?:\/\//, '').replace(/\/api.*$/, '')));
         p.appendChild(info(N.t('tmdb'), N.tmdb.mock() ? N.t('tmdbMock') : (N.tmdb.token() ? N.t('tmdbOn') : N.t('tmdbOff'))));

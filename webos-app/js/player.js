@@ -312,17 +312,20 @@
     if (N.onPlayerClosed) N.onPlayerClosed();
   };
   P.onError = function (m) { P.loading = false; clearTimeout(P.loadT); N.toast(N.t('playErr') + ': ' + m, 6000); P.spin(false); P.showOsd(); };
-  P.onEnded = function () { if (P.index + 1 < P.items.length) P.playIndex(P.index + 1); else P.close(); };
+  P.onEnded = function () { if (P.be) { var d = P.be.duration(); try { N.cw.record(P.post, P.items, P.index, d, d); } catch (e) {} } if (P.index + 1 < P.items.length) P.playIndex(P.index + 1); else P.close(); };
 
   /* ---------- progress reporting (observer) ---------- */
   P.report = function () {
-    if (!P.be || !N.isLoggedIn()) return;
+    if (!P.be) return;
+    var t = P.be.time(), d = P.be.duration();
+    try { N.cw.record(P.post, P.items, P.index, t, d); } catch (e) {} // local Continue list (cw.js)
+    if (!N.isLoggedIn()) return;
     var item = P.items[P.index], info = item.info || {}, u = N.session.user || {};
     N.api.call('observer', {
       post_id: info.post_id || (P.post && P.post.id), file_id: info.file_id,
-      user_id: u.user_id || u.id || '', time: Math.floor(P.be.time()), duration: Math.floor(P.be.duration()),
+      user_id: u.user_id || u.id || '', time: Math.floor(t), duration: Math.floor(d),
       token: (item.options && item.options.token) || ''
-    }).catch(function () {});
+    }).then(function (j) { N.cw.obs(j && j.success, j && j.msg); }, function (e) { N.cw.obs(false, e && e.message); });
   };
   P.reportNow = function () { if (P.be && P.be.time() > 1) P.report(); };
 
